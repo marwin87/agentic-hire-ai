@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      # Required: OpenRouter API key for LLM calls
+      AGENTIC_HIRE_OPENROUTER_API_KEY: ${AGENTIC_HIRE_OPENROUTER_API_KEY}
+
+      # Optional: OrioSearch job discovery service
+      # Default points to host machine (Docker Desktop / Mac / Windows)
+      # On Linux, may need: docker-compose up --add-host host.docker.internal:host-gateway
+      AGENTIC_HIRE_ORIOSEARCH_BASE_URL: ${AGENTIC_HIRE_ORIOSEARCH_BASE_URL:-http://host.docker.internal:8000}
+
+      # Optional: Logging level (INFO, DEBUG, ERROR)
+      AGENTIC_HIRE_LOG_LEVEL: ${AGENTIC_HIRE_LOG_LEVEL:-INFO}
+
+      # Optional: LangFuse tracing (if you have API keys)
+      # LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      # LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+
+    volumes:
+      # Bind mount: CV files (user drops PDFs here from host)
+      - ./data/cv:/app/data/cv
+
+      # Named volume: ChromaDB vector store (persists across restarts)
+      - chroma_db:/app/data/chroma_db
+
+    restart: unless-stopped
+
+    # Optional: resource limits (adjust for your hardware)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  # Named volume for persistent ChromaDB storage
+  chroma_db:
+    driver: local

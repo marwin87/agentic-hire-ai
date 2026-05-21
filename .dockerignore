@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.idea
+data/cv
+data/chroma_db
+tests/
+*.pyc
+*.pyo
+*.egg-info
+.agents
+.claude
+context

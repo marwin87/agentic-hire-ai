@@ -253,6 +253,41 @@ uv run python main.py
 
 ---
 
+## 🐳 Docker Setup (Alternative)
+
+For a containerized setup without installing Python locally, use Docker Compose:
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) or Docker + Docker Compose installed
+
+### Quick Start
+```bash
+# Clone the repo and navigate to it
+git clone <repo-url>
+cd agentic-hire-ai
+
+# Build and start the application
+docker-compose up
+
+# The app will be available at http://localhost:8501
+```
+
+**First run**: Docker will build the image. Subsequent runs will use the cached image and start instantly.
+
+**Stop the application**:
+```bash
+docker-compose down
+```
+
+**Data persistence**: ChromaDB embeddings are stored in a named Docker volume (`chroma_db`) and persist across restarts. To delete everything including data:
+```bash
+docker-compose down -v
+```
+
+For comprehensive Docker guidance (development workflow, debugging, resource limits, Phase 1 FastAPI setup), see [`context/foundation/docker-practices.md`](context/foundation/docker-practices.md).
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
