@@ -538,12 +538,12 @@ No database schema migration required if SearchSession model is deferred (Phase 
 
 #### Manual
 
-- [ ] 3.5 Authenticated call to POST /scout returns 200
-- [ ] 3.6 Response includes search_id, found_jobs, criteria, count, timestamp, status
-- [ ] 3.7 Jobs stored in database with correct user_id
-- [ ] 3.8 Missing CV case: status includes "CV not uploaded"
-- [ ] 3.9 Error case: Scout failure returns 200 with empty list + error detail
-- [ ] 3.10 Unauthenticated request returns 401
+- [x] 3.5 Authenticated call to POST /scout returns 200
+- [x] 3.6 Response includes search_id, found_jobs, criteria, count, timestamp, status
+- [x] 3.7 Jobs stored in database with correct user_id
+- [x] 3.8 Missing CV case: status includes "CV not uploaded"
+- [x] 3.9 Error case: Scout failure returns 200 with empty list + error detail
+- [x] 3.10 Unauthenticated request returns 401
 
 ### Phase 4: Testing & Integration
 

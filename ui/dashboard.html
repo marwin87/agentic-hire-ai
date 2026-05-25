@@ -224,6 +224,46 @@
         .upload-status.loading {
             color: #667eea;
         }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        textarea, input[type="number"] {
+            font-size: 14px;
+        }
+
+        .search-status {
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .search-status.show {
+            display: block;
+        }
+
+        .search-status.success {
+            color: #4caf50;
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .search-status.error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .search-status.loading {
+            color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -343,7 +383,20 @@
                 </div>
                 <div class="upload-status" id="upload-status"></div>
 
-                <button onclick="logout()">Log Out</button>
+                <div class="section-title">Job Search</div>
+                <label for="search-criteria">Search Criteria:</label>
+                <textarea id="search-criteria" placeholder="e.g., Python engineer, remote, SaaS background, 5+ years experience" style="width: 100%; height: 80px; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;"></textarea>
+                <label for="max-results">Max Results:</label>
+                <input type="number" id="max-results" value="5" min="1" max="20" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+                <button id="search-btn" onclick="startSearch()" style="margin-top: 15px;">🔍 Search Jobs</button>
+                <div class="search-status" id="search-status"></div>
+
+                <div id="search-results" style="display: none; margin-top: 30px;">
+                    <div class="section-title">Search Results</div>
+                    <div id="results-content"></div>
+                </div>
+
+                <button onclick="logout()" style="margin-top: 30px; background: #ccc; color: #333;">Log Out</button>
             `;
             setupUploadHandlers();
         }
@@ -472,6 +525,83 @@
 
         function setupUploadHandlers() {
             // Handlers are already set up in the HTML
+        }
+
+        // ============================================
+        // Job Search
+        // ============================================
+
+        async function startSearch() {
+            const criteria = document.getElementById("search-criteria").value.trim();
+            const maxResults = parseInt(document.getElementById("max-results").value) || 5;
+            const statusEl = document.getElementById("search-status");
+            const searchBtn = document.getElementById("search-btn");
+            const resultsDiv = document.getElementById("search-results");
+
+            if (!criteria) {
+                statusEl.textContent = "❌ Please enter search criteria.";
+                statusEl.className = "search-status show error";
+                return;
+            }
+
+            try {
+                searchBtn.disabled = true;
+                statusEl.textContent = "⏳ Searching for jobs...";
+                statusEl.className = "search-status loading show";
+
+                const response = await apiCall("/scout", "POST", {
+                    criteria: criteria,
+                    max_results: maxResults
+                });
+
+                const count = response.count || 0;
+                const status = response.status || "Search complete";
+
+                if (count > 0) {
+                    displaySearchResults(response);
+                    statusEl.textContent = `✅ Found ${count} job(s)!`;
+                    statusEl.className = "search-status success show";
+                } else {
+                    statusEl.textContent = `ℹ️ No jobs found. Status: ${status}`;
+                    statusEl.className = "search-status show";
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+                statusEl.textContent = `❌ Search failed: ${error.detail || error.message || "Unknown error"}`;
+                statusEl.className = "search-status error show";
+            } finally {
+                searchBtn.disabled = false;
+            }
+        }
+
+        function displaySearchResults(response) {
+            const resultsDiv = document.getElementById("search-results");
+            const resultsContent = document.getElementById("results-content");
+            const jobs = response.found_jobs || [];
+
+            let html = `<p><strong>Search ID:</strong> ${response.search_id}</p>`;
+            html += `<p><strong>Criteria:</strong> ${response.criteria}</p>`;
+            html += `<p><strong>Found:</strong> ${response.count} job(s)</p>`;
+            html += `<p><strong>Timestamp:</strong> ${new Date(response.timestamp).toLocaleString()}</p>`;
+
+            if (jobs.length > 0) {
+                html += `<div style="margin-top: 20px;">`;
+                jobs.forEach((job, index) => {
+                    html += `
+                        <div style="background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 6px; border-left: 4px solid #667eea;">
+                            <h3 style="margin: 0 0 10px 0; color: #333;">${index + 1}. ${job.title || 'N/A'}</h3>
+                            <p style="margin: 5px 0;"><strong>Company:</strong> ${job.company || 'N/A'}</p>
+                            <p style="margin: 5px 0;"><strong>URL:</strong> <a href="${job.url}" target="_blank" style="color: #667eea;">${job.url || 'N/A'}</a></p>
+                            ${job.salary_range ? `<p style="margin: 5px 0;"><strong>Salary:</strong> ${job.salary_range}</p>` : ''}
+                            ${job.description ? `<p style="margin: 5px 0;"><strong>Description:</strong> ${job.description.substring(0, 200)}...</p>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            resultsContent.innerHTML = html;
+            resultsDiv.style.display = "block";
         }
 
         // ============================================

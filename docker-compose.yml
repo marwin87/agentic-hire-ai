@@ -1,4 +1,8 @@
 services:
+  # ==========================================
+  # AgenticHire AI Services
+  # ==========================================
+
   db:
     image: pgvector/pgvector:pg17
     container_name: agentic-hire-db
@@ -15,53 +19,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - agentic-hire-net
-    restart: unless-stopped
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
-    environment:
-      # Required: OpenRouter API key for LLM calls
-      AGENTIC_HIRE_OPENROUTER_API_KEY: ${AGENTIC_HIRE_OPENROUTER_API_KEY}
-
-      # Required: JWT secret key (generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))')
-      AGENTIC_HIRE_JWT_SECRET_KEY: ${AGENTIC_HIRE_JWT_SECRET_KEY:-dev_secret_key_change_in_production}
-
-      # Required: PostgreSQL connection string
-      AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentic_hire}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-agentic_hire}
-
-      # Optional: OrioSearch job discovery service
-      # Default points to host machine (Docker Desktop / Mac / Windows)
-      # On Linux, may need: docker-compose up --add-host host.docker.internal:host-gateway
-      AGENTIC_HIRE_ORIOSEARCH_BASE_URL: ${AGENTIC_HIRE_ORIOSEARCH_BASE_URL:-http://host.docker.internal:8000}
-
-      # Optional: Logging level (INFO, DEBUG, ERROR)
-      AGENTIC_HIRE_LOG_LEVEL: ${AGENTIC_HIRE_LOG_LEVEL:-INFO}
-
-      # Optional: LangFuse tracing (if you have API keys)
-      # LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
-      # LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
-
-    volumes:
-      # Bind mount: CV files (user drops PDFs here from host)
-      - ./data/cv:/app/data/cv
-
-      # Named volume: ChromaDB vector store (persists across restarts)
-      - chroma_db:/app/data/chroma_db
-
-    # Optional: resource limits (adjust for your hardware)
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
-
     networks:
       - agentic-hire-net
     restart: unless-stopped
@@ -86,26 +43,33 @@ services:
       # Required: PostgreSQL connection string
       AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentic_hire}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-agentic_hire}
 
-      # Optional: OrioSearch job discovery service
-      AGENTIC_HIRE_ORIOSEARCH_BASE_URL: ${AGENTIC_HIRE_ORIOSEARCH_BASE_URL:-http://host.docker.internal:8000}
+      # Optional: OrioSearch job discovery service (external, on host machine)
+      AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://host.docker.internal:8003
 
       # Optional: Logging level (INFO, DEBUG, ERROR)
       AGENTIC_HIRE_LOG_LEVEL: ${AGENTIC_HIRE_LOG_LEVEL:-INFO}
 
     volumes:
+      # Bind mount: only source code for live changes (not .venv or docker-entrypoint.sh)
+      - ./src:/app/src
+      - ./ui:/app/ui
+      - ./alembic:/app/alembic
+      - ./main.py:/app/main.py
+      - ./ui.py:/app/ui.py
+
       # Bind mount: CV files (user drops PDFs here from host)
       - ./data/cv:/app/data/cv
 
       # Named volume: ChromaDB vector store (persists across restarts)
       - chroma_db:/app/data/chroma_db
 
-    # Health check for FastAPI
+    # Health check for FastAPI + OrioSearch dependency
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:8000/health && curl -f http://host.docker.internal:8003/health || (echo 'ERROR: OrioSearch not responding at http://host.docker.internal:8003' && exit 1)"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
     # Optional: resource limits (adjust for your hardware)
     deploy:
