@@ -1,6 +1,6 @@
 ---
 change_id: jwt-auth-middleware
-status: implementing
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 ---
