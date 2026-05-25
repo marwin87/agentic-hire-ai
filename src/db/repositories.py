@@ -18,9 +18,7 @@ class UserRepository:
     """Repository for User CRUD operations."""
 
     @staticmethod
-    async def create(
-        session: AsyncSession, email: str, password_hash: str
-    ) -> User:
+    async def create(session: AsyncSession, email: str, password_hash: str) -> User:
         """Create a new user account."""
         user = User(email=email, password_hash=password_hash)
         session.add(user)
@@ -48,9 +46,7 @@ class CVFileRepository:
         session: AsyncSession, user_id: UUID, file_path: str, file_hash: str
     ) -> CVFile:
         """Create a new CV file metadata record."""
-        cv_file = CVFile(
-            user_id=user_id, file_path=file_path, file_hash=file_hash
-        )
+        cv_file = CVFile(user_id=user_id, file_path=file_path, file_hash=file_hash)
         session.add(cv_file)
         await session.flush()
         return cv_file
@@ -69,9 +65,7 @@ class CVFileRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def update_hash(
-        session: AsyncSession, user_id: UUID, new_hash: str
-    ) -> None:
+    async def update_hash(session: AsyncSession, user_id: UUID, new_hash: str) -> None:
         """Update the file hash for a user's CV."""
         result = await session.execute(
             select(CVFile)
@@ -88,9 +82,7 @@ class CVEmbeddingRepository:
     """Repository for CV embedding CRUD and vector search operations."""
 
     @staticmethod
-    async def bulk_insert(
-        session: AsyncSession, embeddings: List[CVEmbedding]
-    ) -> None:
+    async def bulk_insert(session: AsyncSession, embeddings: List[CVEmbedding]) -> None:
         """Bulk insert CV embeddings."""
         session.add_all(embeddings)
         await session.flush()
@@ -133,9 +125,7 @@ class JobRepository:
     @staticmethod
     async def create_or_update(session: AsyncSession, job: Job) -> Job:
         """Create or update a job posting."""
-        existing = await session.execute(
-            select(Job).where(Job.id == job.id)
-        )
+        existing = await session.execute(select(Job).where(Job.id == job.id))
         existing_job = existing.scalar_one_or_none()
 
         if existing_job:
@@ -176,9 +166,7 @@ class JobRepository:
     @staticmethod
     async def count_by_user(session: AsyncSession, user_id: UUID) -> int:
         """Count jobs for a user."""
-        result = await session.execute(
-            select(Job).where(Job.user_id == user_id)
-        )
+        result = await session.execute(select(Job).where(Job.user_id == user_id))
         return len(result.scalars().all())
 
 
@@ -186,9 +174,7 @@ class EvaluationRepository:
     """Repository for Evaluation CRUD operations."""
 
     @staticmethod
-    async def create(
-        session: AsyncSession, evaluation: Evaluation
-    ) -> Evaluation:
+    async def create(session: AsyncSession, evaluation: Evaluation) -> Evaluation:
         """Create a new evaluation record."""
         session.add(evaluation)
         await session.flush()
@@ -209,9 +195,7 @@ class EvaluationRepository:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_by_job_id(
-        session: AsyncSession, job_id: str
-    ) -> Optional[Evaluation]:
+    async def get_by_job_id(session: AsyncSession, job_id: str) -> Optional[Evaluation]:
         """Retrieve evaluation for a specific job."""
         result = await session.execute(
             select(Evaluation).where(Evaluation.job_id == job_id)
@@ -229,9 +213,7 @@ class EvaluationRepository:
         """Update match score and orchestrator reasoning for an evaluation."""
         result = await session.execute(
             select(Evaluation).where(
-                and_(
-                    Evaluation.user_id == user_id, Evaluation.job_id == job_id
-                )
+                and_(Evaluation.user_id == user_id, Evaluation.job_id == job_id)
             )
         )
         evaluation = result.scalar_one_or_none()

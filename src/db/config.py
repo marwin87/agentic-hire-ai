@@ -33,11 +33,13 @@ def configure_engine(
     }
 
     if pool_class != NullPool:
-        engine_kwargs.update({
-            "pool_size": pool_size,
-            "max_overflow": max_overflow,
-            "poolclass": pool_class,
-        })
+        engine_kwargs.update(
+            {
+                "pool_size": pool_size,
+                "max_overflow": max_overflow,
+                "poolclass": pool_class,
+            }
+        )
     else:
         engine_kwargs["poolclass"] = NullPool
 

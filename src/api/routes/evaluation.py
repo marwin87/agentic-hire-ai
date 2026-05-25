@@ -50,11 +50,7 @@ async def evaluate_job(
         factory = get_factory()
 
         # Convert job dict to JobOffer if needed
-        job = (
-            JobOffer(**request.job)
-            if isinstance(request.job, dict)
-            else request.job
-        )
+        job = JobOffer(**request.job) if isinstance(request.job, dict) else request.job
 
         # Build state for tailor agent
         state: AgenticHireState = {

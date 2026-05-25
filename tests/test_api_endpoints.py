@@ -94,9 +94,7 @@ def test_validate_jobs_endpoint(
 
 
 @patch("src.api.routes.scoring.get_factory")
-def test_score_jobs_endpoint(
-    mock_get_factory: MagicMock, client: TestClient
-) -> None:
+def test_score_jobs_endpoint(mock_get_factory: MagicMock, client: TestClient) -> None:
     """Test POST /score_jobs endpoint."""
     mock_factory = MagicMock()
     mock_get_factory.return_value = mock_factory
@@ -157,9 +155,7 @@ def test_score_jobs_endpoint(
 
 
 @patch("src.api.routes.evaluation.get_factory")
-def test_evaluate_job_endpoint(
-    mock_get_factory: MagicMock, client: TestClient
-) -> None:
+def test_evaluate_job_endpoint(mock_get_factory: MagicMock, client: TestClient) -> None:
     """Test POST /evaluate_job/{job_id} endpoint."""
     mock_factory = MagicMock()
     mock_get_factory.return_value = mock_factory

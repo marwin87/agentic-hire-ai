@@ -58,7 +58,8 @@ class AppConfig(BaseSettings):
         description="PostgreSQL connection string with asyncpg driver.",
     )
     embedding_dimension: int = Field(
-        1536, description="Vector embedding dimension for pgvector (default: OpenRouter embeddings)."
+        1536,
+        description="Vector embedding dimension for pgvector (default: OpenRouter embeddings).",
     )
     postgres_version: str = Field(
         "17", description="PostgreSQL version (informational)."
@@ -89,7 +90,7 @@ class AppConfig(BaseSettings):
     # JWT settings
     jwt_secret_key: str = Field(
         ...,
-        description="Secret key for JWT signing (HS256). Must be set in .env as AGENTIC_HIRE_JWT_SECRET_KEY. Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        description="Secret key for JWT signing (HS256). Must be set in .env as AGENTIC_HIRE_JWT_SECRET_KEY. Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'",
     )
     jwt_algorithm: str = Field("HS256", description="JWT signing algorithm")
     jwt_access_token_expire_minutes: int = Field(
@@ -102,7 +103,9 @@ class AppConfig(BaseSettings):
     # Password validation settings
     password_min_length: int = Field(8, description="Minimum password length")
     password_require_digit: bool = Field(True, description="Require at least one digit")
-    password_require_uppercase: bool = Field(True, description="Require at least one uppercase letter")
+    password_require_uppercase: bool = Field(
+        True, description="Require at least one uppercase letter"
+    )
 
 
 config = AppConfig()  # type: ignore[call-arg]

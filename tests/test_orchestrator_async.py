@@ -26,7 +26,9 @@ def mock_vector_manager() -> MagicMock:
 
 
 @pytest.fixture
-def orchestrator(mock_llm: MagicMock, mock_vector_manager: MagicMock) -> OrchestratorAgent:
+def orchestrator(
+    mock_llm: MagicMock, mock_vector_manager: MagicMock
+) -> OrchestratorAgent:
     """Create an OrchestratorAgent with mocked LLM and vector manager."""
     return OrchestratorAgent(
         llm=mock_llm, vector_manager=mock_vector_manager, user_id=uuid4()
@@ -130,7 +132,9 @@ async def test_orchestrator_accepts_jobs_at_threshold(
 
 @pytest.mark.asyncio
 async def test_orchestrator_sorts_by_score(
-    orchestrator: OrchestratorAgent, sample_state: AgenticHireState, sample_job: JobOffer
+    orchestrator: OrchestratorAgent,
+    sample_state: AgenticHireState,
+    sample_job: JobOffer,
 ) -> None:
     """Test that shortlisted jobs are sorted by score descending."""
     job2 = JobOffer(

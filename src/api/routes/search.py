@@ -42,7 +42,9 @@ async def search_jobs(
     Returns:
         Dictionary with found_jobs list and status message
     """
-    logger.info(f"POST /search_jobs requested by {user.email} with criteria: {request.criteria}")
+    logger.info(
+        f"POST /search_jobs requested by {user.email} with criteria: {request.criteria}"
+    )
 
     try:
         factory = get_factory()

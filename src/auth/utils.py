@@ -57,11 +57,13 @@ def encode_token(
     now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=expires_in_minutes)
 
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "type": token_type,
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "type": token_type,
+        }
+    )
 
     encoded_jwt = jwt.encode(
         to_encode,

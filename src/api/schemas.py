@@ -35,17 +35,13 @@ class SearchJobsRequest(BaseModel):
 class ValidateJobsRequest(BaseModel):
     """Request body for POST /validate_jobs endpoint."""
 
-    jobs: list[dict[str, Any]] = Field(
-        ..., description="List of jobs to validate"
-    )
+    jobs: list[dict[str, Any]] = Field(..., description="List of jobs to validate")
 
 
 class ScoreJobsRequest(BaseModel):
     """Request body for POST /score_jobs endpoint."""
 
-    jobs: list[dict[str, Any]] = Field(
-        ..., description="List of jobs to score"
-    )
+    jobs: list[dict[str, Any]] = Field(..., description="List of jobs to score")
 
 
 class EvaluateJobRequest(BaseModel):
@@ -63,7 +59,9 @@ class SignupRequest(BaseModel):
 
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., description="User password")
-    password_confirm: str = Field(..., description="Password confirmation (must match password)")
+    password_confirm: str = Field(
+        ..., description="Password confirmation (must match password)"
+    )
 
 
 class LoginRequest(BaseModel):
@@ -83,6 +81,8 @@ class TokenResponse(BaseModel):
     """Response model for auth endpoints returning JWT tokens."""
 
     access_token: str = Field(..., description="JWT access token")
-    refresh_token: Optional[str] = Field(None, description="JWT refresh token (not included on refresh endpoint)")
+    refresh_token: Optional[str] = Field(
+        None, description="JWT refresh token (not included on refresh endpoint)"
+    )
     token_type: str = Field(..., description="Token type (always 'bearer')")
     expires_in: int = Field(..., description="Access token expiration time in seconds")

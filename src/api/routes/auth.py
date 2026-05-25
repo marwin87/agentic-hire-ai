@@ -9,7 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db, get_current_user
 from src.api.schemas import SignupRequest, LoginRequest, RefreshRequest, TokenResponse
-from src.auth import hash_password, verify_password, encode_token, decode_token, validate_password_strength
+from src.auth import (
+    hash_password,
+    verify_password,
+    encode_token,
+    decode_token,
+    validate_password_strength,
+)
 from src.config.settings import config
 from src.db import User
 
@@ -17,7 +23,9 @@ router = APIRouter(prefix="/api", tags=["auth"])
 
 
 @router.post("/signup", response_model=TokenResponse)
-async def signup(request: SignupRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def signup(
+    request: SignupRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Sign up a new user with email and password.
 
     Args:
@@ -100,7 +108,9 @@ async def signup(request: SignupRequest, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def login(
+    request: LoginRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Log in a user with email and password.
 
     Args:
@@ -149,7 +159,9 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)) -> di
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+async def refresh(
+    request: RefreshRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     """Refresh an access token using a refresh token.
 
     Args:
@@ -218,4 +230,3 @@ async def logout(user: User = Depends(get_current_user)) -> dict[str, str]:
 
 
 # Note: /dashboard is not in the /api/auth prefix, so it's registered in main.py
-

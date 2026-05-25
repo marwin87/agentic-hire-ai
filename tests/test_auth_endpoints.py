@@ -212,8 +212,12 @@ class TestAuthTokenGeneration:
         exp_datetime = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
 
         # Token should expire in approximately jwt_access_token_expire_minutes
-        expected_min = before_encode + timedelta(minutes=config.jwt_access_token_expire_minutes - 1)
-        expected_max = after_encode + timedelta(minutes=config.jwt_access_token_expire_minutes + 1)
+        expected_min = before_encode + timedelta(
+            minutes=config.jwt_access_token_expire_minutes - 1
+        )
+        expected_max = after_encode + timedelta(
+            minutes=config.jwt_access_token_expire_minutes + 1
+        )
 
         assert expected_min <= exp_datetime <= expected_max
 

@@ -31,13 +31,17 @@ async def score_jobs(
     Returns:
         Dictionary with shortlisted_jobs and scores
     """
-    logger.info(f"POST /score_jobs requested by {user.email} with {len(request.jobs)} jobs")
+    logger.info(
+        f"POST /score_jobs requested by {user.email} with {len(request.jobs)} jobs"
+    )
 
     try:
         factory = get_factory()
 
         # Convert request job dicts to JobOffer objects
-        valid_jobs = [JobOffer(**job) if isinstance(job, dict) else job for job in request.jobs]
+        valid_jobs = [
+            JobOffer(**job) if isinstance(job, dict) else job for job in request.jobs
+        ]
 
         # Build state for orchestrator
         state: AgenticHireState = {
@@ -70,13 +74,17 @@ async def score_jobs(
                     "title": job.title if hasattr(job, "title") else "",
                     "company": job.company if hasattr(job, "company") else "",
                     "url": job.url if hasattr(job, "url") else "",
-                    "match_score": job.match_score if hasattr(job, "match_score") else 0.0,
+                    "match_score": (
+                        job.match_score if hasattr(job, "match_score") else 0.0
+                    ),
                     "analysis": job.analysis if hasattr(job, "analysis") else "",
                 }
                 for job in shortlisted_jobs
             ],
             "scores": {
-                (job.id if hasattr(job, "id") else ""): (job.match_score if hasattr(job, "match_score") else 0.0)
+                (job.id if hasattr(job, "id") else ""): (
+                    job.match_score if hasattr(job, "match_score") else 0.0
+                )
                 for job in shortlisted_jobs
             },
             "status": result.get("status", "Scoring complete"),

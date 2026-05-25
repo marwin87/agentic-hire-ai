@@ -47,7 +47,9 @@ async def get_db() -> AsyncSession:
 security = HTTPBearer()
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> User:
     """Extract and validate JWT token, return authenticated user.
 
     This dependency enforces JWT authentication on protected endpoints.

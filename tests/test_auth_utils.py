@@ -109,14 +109,18 @@ class TestJWTEncoding:
         """Test that access token is encoded with correct type."""
         data = {"user_id": "123"}
         token = encode_token(data, expires_in_minutes=60, token_type="access")
-        decoded = pyjwt.decode(token, config.jwt_secret_key, algorithms=[config.jwt_algorithm])
+        decoded = pyjwt.decode(
+            token, config.jwt_secret_key, algorithms=[config.jwt_algorithm]
+        )
         assert decoded["type"] == "access"
 
     def test_encode_token_refresh_type(self) -> None:
         """Test that refresh token is encoded with correct type."""
         data = {"user_id": "123"}
         token = encode_token(data, expires_in_minutes=43200, token_type="refresh")
-        decoded = pyjwt.decode(token, config.jwt_secret_key, algorithms=[config.jwt_algorithm])
+        decoded = pyjwt.decode(
+            token, config.jwt_secret_key, algorithms=[config.jwt_algorithm]
+        )
         assert decoded["type"] == "refresh"
 
     def test_decode_token_success(self) -> None:
@@ -135,12 +139,16 @@ class TestJWTEncoding:
         # Create a token that expired 1 second ago
         now = datetime.now(timezone.utc)
         to_encode: dict[str, Any] = data.copy()
-        to_encode.update({
-            "exp": now - timedelta(seconds=1),
-            "iat": now,
-            "type": "access",
-        })
-        expired_token = pyjwt.encode(to_encode, config.jwt_secret_key, algorithm=config.jwt_algorithm)
+        to_encode.update(
+            {
+                "exp": now - timedelta(seconds=1),
+                "iat": now,
+                "type": "access",
+            }
+        )
+        expired_token = pyjwt.encode(
+            to_encode, config.jwt_secret_key, algorithm=config.jwt_algorithm
+        )
 
         with pytest.raises(pyjwt.ExpiredSignatureError):
             decode_token(expired_token)
@@ -190,7 +198,9 @@ class TestJWTEncoding:
         """Test that refresh tokens have longer expiration than access tokens."""
         data: dict[str, str] = {"user_id": "123"}
         access_token = encode_token(data, expires_in_minutes=60, token_type="access")
-        refresh_token = encode_token(data, expires_in_minutes=43200, token_type="refresh")
+        refresh_token = encode_token(
+            data, expires_in_minutes=43200, token_type="refresh"
+        )
 
         access_decoded = decode_token(access_token)
         refresh_decoded = decode_token(refresh_token)

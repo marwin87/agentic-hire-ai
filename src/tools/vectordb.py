@@ -61,7 +61,6 @@ class CVVectorManager:
         finally:
             runner.close()
 
-
     @staticmethod
     def _calculate_file_hash(file_path: str) -> str:
         sha256_hash = hashlib.sha256()

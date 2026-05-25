@@ -124,11 +124,15 @@ class Evaluation(Base):  # type: ignore[misc, valid-type]
         nullable=False,
         index=True,
     )
-    job_id = Column(String(255), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(
+        String(255), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
+    )
     match_score = Column(Float, nullable=False)
     orchestrator_reasoning = Column(Text, nullable=True)
     tailor_summary = Column(Text, nullable=True)
     evaluated_at = Column(DateTime, default=datetime.utcnow)
 
     def __repr__(self) -> str:
-        return f"<Evaluation(id={self.id}, user_id={self.user_id}, job_id={self.job_id})>"
+        return (
+            f"<Evaluation(id={self.id}, user_id={self.user_id}, job_id={self.job_id})>"
+        )

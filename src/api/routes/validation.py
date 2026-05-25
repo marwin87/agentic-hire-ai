@@ -33,11 +33,15 @@ async def validate_jobs(
     Returns:
         Dictionary with valid_jobs and rejected_jobs lists
     """
-    logger.info(f"POST /validate_jobs requested by {user.email} with {len(request.jobs)} jobs")
+    logger.info(
+        f"POST /validate_jobs requested by {user.email} with {len(request.jobs)} jobs"
+    )
 
     try:
         # Convert request job dicts to JobOffer objects
-        jobs = [JobOffer(**job) if isinstance(job, dict) else job for job in request.jobs]
+        jobs = [
+            JobOffer(**job) if isinstance(job, dict) else job for job in request.jobs
+        ]
 
         # Build state for validation node
         state: AgenticHireState = {
@@ -62,7 +66,9 @@ async def validate_jobs(
         valid_jobs = result.get("valid_jobs", [])
         rejected_jobs = result.get("rejected_jobs", [])
 
-        logger.info(f"Validation complete: {len(valid_jobs)} valid, {len(rejected_jobs)} rejected")
+        logger.info(
+            f"Validation complete: {len(valid_jobs)} valid, {len(rejected_jobs)} rejected"
+        )
 
         return {
             "valid_jobs": [

@@ -24,8 +24,8 @@ async def test_user_model_structure(test_user: User) -> None:
     assert test_user.password_hash == "$2b$12$..."
     assert test_user.created_at is not None
     assert test_user.updated_at is not None
-    assert hasattr(test_user, '__tablename__')
-    assert test_user.__tablename__ == 'users'
+    assert hasattr(test_user, "__tablename__")
+    assert test_user.__tablename__ == "users"
 
 
 @pytest.mark.asyncio
@@ -34,8 +34,8 @@ async def test_cv_file_user_relationship(test_cv_file: CVFile, test_user: User) 
     assert test_cv_file.user_id == test_user.id
     assert test_cv_file.file_path is not None
     assert test_cv_file.file_hash is not None
-    assert hasattr(test_cv_file, '__tablename__')
-    assert test_cv_file.__tablename__ == 'cv_files'
+    assert hasattr(test_cv_file, "__tablename__")
+    assert test_cv_file.__tablename__ == "cv_files"
 
 
 @pytest.mark.asyncio
@@ -46,8 +46,8 @@ async def test_job_model_structure(test_job: Job, test_user: User) -> None:
     assert test_job.title == "Senior Python Engineer"
     assert test_job.company == "Tech Corp"
     assert test_job.url is not None
-    assert hasattr(test_job, '__tablename__')
-    assert test_job.__tablename__ == 'jobs'
+    assert hasattr(test_job, "__tablename__")
+    assert test_job.__tablename__ == "jobs"
 
 
 @pytest.mark.asyncio
@@ -60,8 +60,8 @@ async def test_evaluation_model_structure(
     assert test_evaluation.job_id == test_job.id
     assert 0.0 <= test_evaluation.match_score <= 1.0
     assert test_evaluation.match_score == 0.85
-    assert hasattr(test_evaluation, '__tablename__')
-    assert test_evaluation.__tablename__ == 'evaluations'
+    assert hasattr(test_evaluation, "__tablename__")
+    assert test_evaluation.__tablename__ == "evaluations"
 
 
 @pytest.mark.asyncio
@@ -72,8 +72,8 @@ async def test_cv_embedding_model_structure(test_cv_embeddings: list) -> None:
     assert embedding.user_id is not None
     assert embedding.chunk_text is not None
     assert len(embedding.embedding) == 1536
-    assert hasattr(embedding, '__tablename__')
-    assert embedding.__tablename__ == 'cv_embeddings'
+    assert hasattr(embedding, "__tablename__")
+    assert embedding.__tablename__ == "cv_embeddings"
 
 
 @pytest.mark.asyncio
@@ -223,7 +223,9 @@ async def test_cv_file_hash_update_pattern(test_cv_file: CVFile) -> None:
 
 
 @pytest.mark.asyncio
-async def test_job_repository_filtering_by_user(db_session: AsyncMock, test_user: User) -> None:
+async def test_job_repository_filtering_by_user(
+    db_session: AsyncMock, test_user: User
+) -> None:
     """
     Test that JobRepository.get_by_user would properly filter by user_id.
     This tests the repository pattern for user isolation.

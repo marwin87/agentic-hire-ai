@@ -21,7 +21,9 @@ class TestAuthenticationFlow:
         assert verify_password(password, password_hash)
 
         user_data = {"user_id": "user-123", "email": email}
-        access_token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        access_token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
         refresh_token = encode_token(
             user_data,
             config.jwt_refresh_token_expire_days * 24 * 60,
@@ -136,7 +138,9 @@ class TestTokenExpiration:
             "iat": now,
             "type": "access",
         }
-        expired_token = pyjwt.encode(to_encode, config.jwt_secret_key, algorithm=config.jwt_algorithm)
+        expired_token = pyjwt.encode(
+            to_encode, config.jwt_secret_key, algorithm=config.jwt_algorithm
+        )
 
         with pytest.raises(pyjwt.ExpiredSignatureError):
             decode_token(expired_token)
@@ -145,7 +149,9 @@ class TestTokenExpiration:
         """Test refresh tokens live much longer than access tokens."""
         user_data = {"user_id": "lifetime-test", "email": "lifetime@example.com"}
 
-        access_token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        access_token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
         refresh_token = encode_token(
             user_data,
             config.jwt_refresh_token_expire_days * 24 * 60,
@@ -249,7 +255,9 @@ class TestTokenTampering:
     def test_tampered_token_rejected(self) -> None:
         """Test that tampering with token payload is detected."""
         user_data = {"user_id": "tamper-test", "email": "tamper@example.com"}
-        token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
 
         # Tamper with token by modifying last characters
         tampered_token = token[:-20] + "0" * 20
@@ -262,7 +270,9 @@ class TestTokenTampering:
         user_data = {"user_id": "secret-test", "email": "secret@example.com"}
 
         # Create token with correct secret
-        token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
 
         # Try to decode with wrong secret
         wrong_secret = "wrong-secret-key-12345"
@@ -272,7 +282,9 @@ class TestTokenTampering:
     def test_access_token_not_usable_as_refresh(self) -> None:
         """Test that access tokens cannot be used where refresh tokens expected."""
         user_data = {"user_id": "type-test", "email": "type@example.com"}
-        access_token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        access_token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
 
         payload = decode_token(access_token)
         assert payload["type"] == "access"
@@ -288,7 +300,9 @@ class TestEmailValidationEdgeCases:
         email = "special+tag@example.co.uk"
         user_data = {"user_id": "email-test", "email": email}
 
-        token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
         payload = decode_token(token)
 
         assert payload["email"] == email
@@ -298,7 +312,9 @@ class TestEmailValidationEdgeCases:
         email = "a" * 64 + "@" + "b" * 63 + ".example.com"  # Very long but valid
         user_data = {"user_id": "long-email-test", "email": email}
 
-        token = encode_token(user_data, config.jwt_access_token_expire_minutes, "access")
+        token = encode_token(
+            user_data, config.jwt_access_token_expire_minutes, "access"
+        )
         payload = decode_token(token)
 
         assert payload["email"] == email

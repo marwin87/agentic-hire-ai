@@ -1,7 +1,12 @@
 """Database session management and FastAPI dependency injection."""
 
 from typing import AsyncGenerator, Optional
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+)
 from src.config.settings import AppConfig
 
 # Global engine instance

@@ -146,7 +146,9 @@ class ScoutAgent:
                             )
                         )
                     elif tool_call["name"] == "scrape_webpage_tool":
-                        raw_results = await scrape_webpage_tool.ainvoke(tool_call["args"])
+                        raw_results = await scrape_webpage_tool.ainvoke(
+                            tool_call["args"]
+                        )
                         messages.append(
                             ToolMessage(
                                 name="scrape_webpage_tool",
