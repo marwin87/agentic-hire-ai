@@ -415,13 +415,13 @@ Create seed data script for local development, verify schema with sample data, a
 - [x] 2.1 Define SQLAlchemy ORM models (users, jobs, cv_embeddings, evaluations, cv_files) — 70f3e39
 - [x] 2.2 Create Alembic migration with pgvector extension — 70f3e39
 - [x] 2.3 Define database session factory and imports — 70f3e39
-- [x] 3.1 Add PostgreSQL service to docker-compose.yml
-- [x] 3.2 Update .env.example with database credentials
-- [x] 3.3 Update FastAPI lifespan to handle migrations on startup
-- [ ] 4.1 Create async repository classes (UserRepository, JobRepository, etc.)
-- [ ] 4.2 Create database session dependency for FastAPI
-- [ ] 4.3 Write pytest tests for repositories
-- [ ] 5.1 Create seed_db.py script
-- [ ] 5.2 Write integration tests for vector search and user isolation
-- [ ] 5.3 Create conftest.py with database fixtures
-- [ ] 5.4 Document database setup and usage
+- [x] 3.1 Add PostgreSQL service to docker-compose.yml — 4b62406
+- [x] 3.2 Update .env.example with database credentials — 4b62406
+- [x] 3.3 Update FastAPI lifespan to handle migrations on startup — 4b62406
+- [x] 4.1 Create async repository classes (UserRepository, JobRepository, etc.)
+- [x] 4.2 Create database session dependency for FastAPI
+- [x] 4.3 Write pytest tests for repositories
+- [x] 5.1 Create seed_db.py script
+- [x] 5.2 Write integration tests for vector search and user isolation
+- [x] 5.3 Create conftest.py with database fixtures
+- [x] 5.4 Document database setup and usage

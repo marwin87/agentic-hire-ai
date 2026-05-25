@@ -4,6 +4,7 @@ title: PostgreSQL + pgvector schema setup
 created: 2026-05-25
 status: implementing
 updated: 2026-05-25
+phase_1_completed: true
 ---
 
 # Change: PostgreSQL + pgvector setup
