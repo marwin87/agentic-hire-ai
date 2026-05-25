@@ -33,7 +33,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007, FR-008 | done  |
 | F-03  | `jwt-auth-middleware`      | (foundation) JWT tokens issued, auth endpoints live | F-01                | FR-001, FR-002 | done  |
 | F-04  | `cv-vision-to-pgvector`    | (foundation) CV embeddings stored in pgvector    | F-02                | FR-009, FR-013 | done  |
-| S-01  | `user-signup-auth`         | sign up with email + password and receive JWT    | F-01, F-02, F-03     | FR-001, FR-002, FR-003 | proposed  |
+| S-01  | `user-signup-auth`         | sign up with email + password and receive JWT    | F-01, F-02, F-03     | FR-001, FR-002, FR-003 | done  |
 | S-02  | `user-login-refresh`       | log in and refresh JWT token                     | F-03, S-01           | FR-002         | proposed  |
 | S-03  | `user-cv-upload`           | upload CV, trigger embedding, verify storage     | F-01, F-02, F-04     | FR-003, FR-009, FR-013 | proposed  |
 | S-04  | `scout-api-endpoint`       | invoke job search via FastAPI endpoint           | F-01                 | FR-004, FR-011 | proposed  |
@@ -151,7 +151,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - **Token expiration window** — Owner: user. Block: yes. Needed before F-03 is testable.
   - **Frontend framework choice** (React vs Next.js vs minimal?) — Owner: user. Block: no. Can ship with minimal HTML form for MVP.
 - **Risk:** Signup form validates email and password strength; backend persists hashed password and issues JWT. Risk: password validation bypass, token leakage. Mitigation: F-03's auth middleware enforces bcrypt cost ≥ 12, JWT includes expiration timestamp.
-- **Status:** proposed (ready after F-01, F-02, F-03 and Q1 resolved)
+- **Status:** done
 
 ### S-02: User can log in and refresh JWT
 
@@ -296,3 +296,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **F-02: (foundation) PostgreSQL + pgvector schema ready** — Archived 2026-05-25 → `context/archive/2026-05-25-postgresql-pgvector-setup/`. Lesson: —.
 - **F-03: (foundation) JWT tokens issued, auth endpoints live** — Archived 2026-05-25 → `context/archive/2026-05-25-jwt-auth-middleware/`. Lesson: —.
 - **F-04: (foundation) CV embeddings stored in pgvector** — Archived 2026-05-25 → `context/archive/2026-05-25-cv-vision-to-pgvector/`. Lesson: —.
+- **S-01: sign up with email + password and receive JWT** — Archived 2026-05-25 → `context/archive/2026-05-25-user-signup-auth/`. Lesson: —.
