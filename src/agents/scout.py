@@ -50,7 +50,9 @@ class ScoutAgent:
         scout_runs = state.get("scout_runs", 0) + 1
         logger.info(f"--- [NODE] EXECUTING SCOUT AGENT (Run {scout_runs}) ---")
 
-        resume_context = cv_context or state.get("resume_context", "No resume context provided.")
+        resume_context = cv_context or state.get(
+            "resume_context", "No resume context provided."
+        )
         # target_criteria is not in the type definition, fallback correctly
         target_criteria = (
             state.get("target_criteria") or "open job roles matching the candidate's CV"
