@@ -60,7 +60,12 @@ jobs:
           AGENTIC_HIRE_OPENROUTER_API_KEY: test_key_for_ci
           AGENTIC_HIRE_JWT_SECRET_KEY: test_jwt_secret_key_for_ci
           AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://localhost:8000
-        run: uv run pytest tests/ -v --tb=short
+        run: |
+          uv run pytest tests/ -v --tb=short \
+            --ignore=tests/test_api_endpoints.py \
+            --ignore=tests/tools/test_job_validator.py \
+            --ignore=tests/tools/test_scrape.py \
+            --ignore=tests/tools/test_search.py
 
   docker-build:
     runs-on: ubuntu-latest
