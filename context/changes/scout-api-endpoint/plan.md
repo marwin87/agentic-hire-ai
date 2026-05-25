@@ -504,23 +504,23 @@ No database schema migration required if SearchSession model is deferred (Phase 
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly: alembic upgrade head
-- [x] 1.2 SQLAlchemy models compile without errors
-- [x] 1.3 Type checking passes: mypy src/db/
+- [x] 1.1 Migration applies cleanly: alembic upgrade head — 14cc797
+- [x] 1.2 SQLAlchemy models compile without errors — 14cc797
+- [x] 1.3 Type checking passes: mypy src/db/ — 14cc797
 
 #### Manual
 
-- [x] 1.4 PostgreSQL table exists with correct schema
-- [x] 1.5 Test record insert and retrieve via repository
-- [x] 1.6 Foreign key cascade verified
+- [x] 1.4 PostgreSQL table exists with correct schema — 14cc797
+- [x] 1.5 Test record insert and retrieve via repository — 14cc797
+- [x] 1.6 Foreign key cascade verified — 14cc797
 
 ### Phase 2: Scout Agent & CVVectorManager Async Integration
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: mypy src/agents/ src/api/
-- [ ] 2.2 Scout agent tests pass
-- [ ] 2.3 No event loop blocking detected
+- [x] 2.1 Type checking passes: mypy src/agents/ src/api/
+- [x] 2.2 Scout agent tests pass
+- [x] 2.3 No event loop blocking detected
 
 #### Manual
 

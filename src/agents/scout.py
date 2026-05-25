@@ -1,7 +1,7 @@
 import asyncio
 import urllib.parse
 from datetime import datetime
-from typing import List, Set, Any
+from typing import List, Set, Any, Optional
 from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
@@ -44,11 +44,13 @@ class ScoutAgent:
         )
         return normalized
 
-    async def __call__(self, state: AgenticHireState) -> dict[str, Any]:
+    async def __call__(
+        self, state: AgenticHireState, cv_context: Optional[str] = None
+    ) -> dict[str, Any]:
         scout_runs = state.get("scout_runs", 0) + 1
         logger.info(f"--- [NODE] EXECUTING SCOUT AGENT (Run {scout_runs}) ---")
 
-        resume_context = state.get("resume_context", "No resume context provided.")
+        resume_context = cv_context or state.get("resume_context", "No resume context provided.")
         # target_criteria is not in the type definition, fallback correctly
         target_criteria = (
             state.get("target_criteria") or "open job roles matching the candidate's CV"
