@@ -2,18 +2,22 @@
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from loguru import logger
 
-from src.api.dependencies import get_factory
+from src.api.dependencies import get_factory, get_current_user
 from src.api.schemas import ScoreJobsRequest
+from src.db import User
 from src.schema.state import AgenticHireState, JobOffer
 
 router = APIRouter(prefix="/api", tags=["scoring"])
 
 
 @router.post("/score_jobs")
-async def score_jobs(request: ScoreJobsRequest) -> dict[str, Any]:
+async def score_jobs(
+    request: ScoreJobsRequest,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Score jobs based on semantic match to candidate CV.
 
     Uses RAG (Retrieval-Augmented Generation) to find relevant CV sections
@@ -22,11 +26,12 @@ async def score_jobs(request: ScoreJobsRequest) -> dict[str, Any]:
 
     Args:
         request: ScoreJobsRequest with list of jobs to score
+        user: Authenticated user from JWT token
 
     Returns:
         Dictionary with shortlisted_jobs and scores
     """
-    logger.info(f"POST /score_jobs requested with {len(request.jobs)} jobs")
+    logger.info(f"POST /score_jobs requested by {user.email} with {len(request.jobs)} jobs")
 
     try:
         factory = get_factory()

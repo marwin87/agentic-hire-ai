@@ -4,6 +4,7 @@ from src.tools.vectordb import CVVectorManager
 from pydantic import BaseModel, Field
 from loguru import logger
 from typing import Any
+from uuid import UUID
 
 
 class MatchRating(BaseModel):
@@ -16,13 +17,17 @@ class MatchRating(BaseModel):
 class OrchestratorAgent:
     """
     The Matchmaker. It compares found jobs against the candidate's actual
-    experience stored in ChromaDB and filters for the best fits.
+    experience stored in pgvector and filters for the best fits.
+    Uses user-filtered RAG to retrieve only the relevant candidate's CV chunks.
     """
 
-    def __init__(self, llm: Any, vector_manager: CVVectorManager) -> None:
+    def __init__(
+        self, llm: Any, vector_manager: CVVectorManager, user_id: UUID
+    ) -> None:
         self.llm = llm
-        # Initialize the Vector DB manager to fetch CV context
+        # Initialize the Vector DB manager to fetch CV context (pgvector backend)
         self.vector_manager = vector_manager
+        self.user_id = user_id
         # Create a structured judge
         self.judge = self.llm.with_structured_output(MatchRating)
 

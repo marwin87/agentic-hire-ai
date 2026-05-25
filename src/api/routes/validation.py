@@ -2,11 +2,12 @@
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from loguru import logger
 
-from src.api.dependencies import get_factory
+from src.api.dependencies import get_factory, get_current_user
 from src.api.schemas import ValidateJobsRequest
+from src.db import User
 from src.graph import validate_and_limit_jobs_node
 from src.schema.state import AgenticHireState, JobOffer
 
@@ -14,7 +15,10 @@ router = APIRouter(prefix="/api", tags=["validation"])
 
 
 @router.post("/validate_jobs")
-async def validate_jobs(request: ValidateJobsRequest) -> dict[str, Any]:
+async def validate_jobs(
+    request: ValidateJobsRequest,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Validate and filter jobs - remove dead links and expired postings.
 
     Takes a list of jobs found by the Scout agent and filters out:
@@ -24,11 +28,12 @@ async def validate_jobs(request: ValidateJobsRequest) -> dict[str, Any]:
 
     Args:
         request: ValidateJobsRequest with list of jobs to validate
+        user: Authenticated user from JWT token
 
     Returns:
         Dictionary with valid_jobs and rejected_jobs lists
     """
-    logger.info(f"POST /validate_jobs requested with {len(request.jobs)} jobs")
+    logger.info(f"POST /validate_jobs requested by {user.email} with {len(request.jobs)} jobs")
 
     try:
         # Convert request job dicts to JobOffer objects

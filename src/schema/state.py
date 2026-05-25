@@ -1,5 +1,6 @@
 from typing import Annotated, List, TypedDict, Optional
 import operator
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -36,6 +37,9 @@ class AgenticHireState(TypedDict, total=False):
     """
     The shared state of the LangGraph workflow.
     """
+
+    # User ID for multi-user isolation (pgvector backend requires this)
+    user_id: UUID
 
     # The raw text or summarized version of your CV retrieved from the Vector DB
     resume_context: str

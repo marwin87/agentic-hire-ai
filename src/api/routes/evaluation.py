@@ -2,12 +2,13 @@
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from loguru import logger
 from pydantic import BaseModel
 
-from src.api.dependencies import get_factory
+from src.api.dependencies import get_factory, get_current_user
 from src.api.schemas import EvaluateJobRequest
+from src.db import User
 from src.schema.state import AgenticHireState, JobOffer
 
 router = APIRouter(prefix="/api", tags=["evaluation"])
@@ -24,7 +25,11 @@ class EvaluateJobResponse(BaseModel):
 
 
 @router.post("/evaluate_job/{job_id}")
-async def evaluate_job(job_id: str, request: EvaluateJobRequest) -> dict[str, Any]:
+async def evaluate_job(
+    job_id: str,
+    request: EvaluateJobRequest,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Generate tailored application insights for a specific job.
 
     Takes a job object and generates personalized evaluation using TailorAgent.
@@ -34,6 +39,7 @@ async def evaluate_job(job_id: str, request: EvaluateJobRequest) -> dict[str, An
     Args:
         job_id: Unique identifier for the job
         request: EvaluateJobRequest with job details
+        user: Authenticated user from JWT token
 
     Returns:
         Dictionary with job_id, evaluation text, and status

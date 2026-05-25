@@ -51,8 +51,6 @@ services:
       # Named volume: ChromaDB vector store (persists across restarts)
       - chroma_db:/app/data/chroma_db
 
-    restart: unless-stopped
-
     # Optional: resource limits (adjust for your hardware)
     deploy:
       resources:
@@ -94,8 +92,6 @@ services:
 
       # Named volume: ChromaDB vector store (persists across restarts)
       - chroma_db:/app/data/chroma_db
-
-    restart: unless-stopped
 
     # Health check for FastAPI
     healthcheck:

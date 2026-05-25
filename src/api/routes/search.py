@@ -2,13 +2,14 @@
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from loguru import logger
 
 from src.agents.agents import get_agent_factory
-from src.api.dependencies import get_factory
+from src.api.dependencies import get_factory, get_current_user
 from src.api.schemas import SearchJobsRequest
 from src.config.settings import config
+from src.db import User
 from src.schema.state import AgenticHireState
 
 router = APIRouter(prefix="/api", tags=["search"])
@@ -26,18 +27,22 @@ class SearchJobsResponse:
 
 
 @router.post("/search_jobs")
-async def search_jobs(request: SearchJobsRequest) -> dict[str, Any]:
+async def search_jobs(
+    request: SearchJobsRequest,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Search for jobs using the Scout agent.
 
     Accepts job search criteria and returns a list of job offers found via OrioSearch.
 
     Args:
         request: SearchJobsRequest with criteria and optional max_results
+        user: Authenticated user from JWT token
 
     Returns:
         Dictionary with found_jobs list and status message
     """
-    logger.info(f"POST /search_jobs requested with criteria: {request.criteria}")
+    logger.info(f"POST /search_jobs requested by {user.email} with criteria: {request.criteria}")
 
     try:
         factory = get_factory()

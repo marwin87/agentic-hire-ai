@@ -7,6 +7,7 @@ from src.config.settings import config
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import SecretStr
 from typing import Any
+from uuid import UUID, uuid4
 
 
 class AgentFactory:
@@ -15,7 +16,10 @@ class AgentFactory:
     with consistent configuration.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, user_id: UUID | None = None) -> None:
+        # Use provided user_id or generate a default for MVP single-user mode
+        self.user_id = user_id or uuid4()
+
         # Centralized OpenRouter Config
         api_key_value = config.openrouter_api_key
         api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
@@ -34,9 +38,11 @@ class AgentFactory:
             api_key=api_key,
         )
 
-        # Vector manager initialization
+        # Vector manager initialization with user_id
         self.vector_manager = CVVectorManager(
-            vision_model=vision_model, embeddings=embeddings
+            vision_model=vision_model,
+            embeddings=embeddings,
+            user_id=self.user_id,
         )
 
         scout_llm = ChatOpenAI(
@@ -70,7 +76,9 @@ class AgentFactory:
         # Inject them into the agents and tools
         self.scout = ScoutAgent(llm=scout_llm)
         self.orchestrator = OrchestratorAgent(
-            llm=orchestrator_llm, vector_manager=self.vector_manager
+            llm=orchestrator_llm,
+            vector_manager=self.vector_manager,
+            user_id=self.user_id,
         )
         self.tailor = TailorAgent(llm=tailor_llm)
         self.job_validator = JobValidator(llm=validator_llm)

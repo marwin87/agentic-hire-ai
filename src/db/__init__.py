@@ -2,6 +2,13 @@
 
 from src.db.database import init_db, close_db, get_db, get_session_factory
 from src.db.models import Base, User, CVFile, CVEmbedding, Job, Evaluation
+from src.db.repositories import (
+    UserRepository,
+    CVFileRepository,
+    CVEmbeddingRepository,
+    JobRepository,
+    EvaluationRepository,
+)
 
 __all__ = [
     "init_db",
@@ -14,4 +21,9 @@ __all__ = [
     "CVEmbedding",
     "Job",
     "Evaluation",
+    "UserRepository",
+    "CVFileRepository",
+    "CVEmbeddingRepository",
+    "JobRepository",
+    "EvaluationRepository",
 ]

@@ -9,7 +9,7 @@ from passlib.context import CryptContext  # type: ignore[import-untyped]
 
 from src.config.settings import config
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")  # type: ignore[arg-type]
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
