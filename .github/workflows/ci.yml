@@ -58,6 +58,7 @@ jobs:
         env:
           AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
           AGENTIC_HIRE_OPENROUTER_API_KEY: test_key_for_ci
+          AGENTIC_HIRE_JWT_SECRET_KEY: test_jwt_secret_key_for_ci
           AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://localhost:8000
         run: uv run pytest tests/ -v --tb=short
 
