@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional
+import secrets
 
 
 class AppConfig(BaseSettings):
@@ -84,6 +85,24 @@ class AppConfig(BaseSettings):
     vision_model_name: str = Field("openai/gpt-4o")
     validator_model_name: str = Field("openai/gpt-4o")
     embedded_model_name: str = Field("text-embedding-3-small")
+
+    # JWT settings
+    jwt_secret_key: str = Field(
+        ...,
+        description="Secret key for JWT signing (HS256). Must be set in .env as AGENTIC_HIRE_JWT_SECRET_KEY. Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+    )
+    jwt_algorithm: str = Field("HS256", description="JWT signing algorithm")
+    jwt_access_token_expire_minutes: int = Field(
+        24 * 60, description="Access token lifetime in minutes (default: 24 hours)"
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        30, description="Refresh token lifetime in days"
+    )
+
+    # Password validation settings
+    password_min_length: int = Field(8, description="Minimum password length")
+    password_require_digit: bool = Field(True, description="Require at least one digit")
+    password_require_uppercase: bool = Field(True, description="Require at least one uppercase letter")
 
 
 config = AppConfig()  # type: ignore[call-arg]

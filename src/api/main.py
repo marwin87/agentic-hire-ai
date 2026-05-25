@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from src.agents.agents import get_agent_factory
-from src.api.routes import search, validation, scoring, evaluation
+from src.api.routes import search, validation, scoring, evaluation, auth
 from src.config.settings import config
 from src.db import init_db, close_db
 
@@ -43,12 +43,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware — permissive for local development
+# CORS middleware — restrict to trusted origins in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:8501", "http://localhost:8000"],  # Whitelist trusted origins
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -66,14 +66,20 @@ async def logging_middleware(request: Request, call_next: Any) -> Any:
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler returning structured JSON error responses."""
     logger.error(f"Unhandled exception in {request.method} {request.url.path}: {exc}", exc_info=exc)
+    # In production, don't expose implementation details; log the full error server-side
+    detail = "Internal server error"
+    if config.debug_mode:
+        detail = str(exc)
     return JSONResponse(
         status_code=500,
         content={
             "error": "internal_error",
-            "detail": str(exc),
+            "detail": detail,
             "code": "INTERNAL_SERVER_ERROR",
         },
     )
+
+
 
 
 @app.get("/health")
@@ -83,6 +89,7 @@ async def health_check() -> dict[str, str]:
 
 
 # Register route routers
+app.include_router(auth.router)
 app.include_router(search.router)
 app.include_router(validation.router)
 app.include_router(scoring.router)

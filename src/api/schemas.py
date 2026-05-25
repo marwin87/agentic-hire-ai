@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 
 class ErrorResponse(BaseModel):
@@ -53,3 +53,36 @@ class EvaluateJobRequest(BaseModel):
 
     job_id: str = Field(..., description="Job ID")
     job: dict[str, Any] = Field(..., description="Job object to evaluate")
+
+
+# Auth endpoints schemas
+
+
+class SignupRequest(BaseModel):
+    """Request body for POST /auth/signup endpoint."""
+
+    email: EmailStr = Field(..., description="User email address")
+    password: str = Field(..., description="User password")
+    password_confirm: str = Field(..., description="Password confirmation (must match password)")
+
+
+class LoginRequest(BaseModel):
+    """Request body for POST /auth/login endpoint."""
+
+    email: EmailStr = Field(..., description="User email address")
+    password: str = Field(..., description="User password")
+
+
+class RefreshRequest(BaseModel):
+    """Request body for POST /auth/refresh endpoint."""
+
+    refresh_token: str = Field(..., description="Refresh token from login/signup")
+
+
+class TokenResponse(BaseModel):
+    """Response model for auth endpoints returning JWT tokens."""
+
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: Optional[str] = Field(None, description="JWT refresh token (not included on refresh endpoint)")
+    token_type: str = Field(..., description="Token type (always 'bearer')")
+    expires_in: int = Field(..., description="Access token expiration time in seconds")
