@@ -79,22 +79,25 @@ def test_should_rescout_no_jobs_found_initial_run(
 
 
 @patch("src.graph.get_agent_factory")  # Patch the getter function
-def test_validate_and_limit_jobs_node_all_valid(
+@pytest.mark.asyncio
+async def test_validate_and_limit_jobs_node_all_valid(
     mock_get_agent_factory: Any,
     initial_state: AgenticHireState,
     mock_job_offer: JobOffer,
 ) -> None:
+    from unittest.mock import AsyncMock
+
     mock_factory_instance = MagicMock()
     mock_get_agent_factory.return_value = mock_factory_instance
 
-    mock_factory_instance.job_validator.is_job_valid.return_value = True
+    mock_factory_instance.job_validator.is_job_valid = AsyncMock(return_value=True)
     job1 = mock_job_offer.model_copy(update={"id": "job1"})
     job2 = mock_job_offer.model_copy(update={"id": "job2"})
 
     state = cast(
         AgenticHireState, {**initial_state, "found_jobs": [job1, job2], "scout_runs": 0}
     )
-    result = validate_and_limit_jobs_node(state)
+    result = await validate_and_limit_jobs_node(state)
 
     assert len(result["valid_jobs"]) == 2
     assert len(result["rejected_jobs"]) == 0
@@ -107,11 +110,14 @@ def test_validate_and_limit_jobs_node_all_valid(
 
 
 @patch("src.graph.get_agent_factory")  # Patch the getter function
-def test_validate_and_limit_jobs_node_some_invalid(
+@pytest.mark.asyncio
+async def test_validate_and_limit_jobs_node_some_invalid(
     mock_get_agent_factory: Any,
     initial_state: AgenticHireState,
     mock_job_offer: JobOffer,
 ) -> None:
+    from unittest.mock import AsyncMock
+
     job1 = mock_job_offer.model_copy(update={"id": "job1"})
     job2 = mock_job_offer.model_copy(update={"id": "job2"})
     job3 = mock_job_offer.model_copy(update={"id": "job3"})
@@ -120,16 +126,17 @@ def test_validate_and_limit_jobs_node_some_invalid(
     mock_get_agent_factory.return_value = mock_factory_instance
 
     # Mock validator to make job2 invalid
-    mock_factory_instance.job_validator.is_job_valid.side_effect = (
-        lambda job: job.id != "job2"
-    )
+    async def mock_is_valid(job: JobOffer) -> bool:
+        return job.id != "job2"
+
+    mock_factory_instance.job_validator.is_job_valid = mock_is_valid
 
     state = cast(
         AgenticHireState,
         {**initial_state, "found_jobs": [job1, job2, job3], "max_offers": 5},
     )
 
-    result = validate_and_limit_jobs_node(state)
+    result = await validate_and_limit_jobs_node(state)
 
     assert len(result["valid_jobs"]) == 2
     assert len(result["rejected_jobs"]) == 1
@@ -140,15 +147,18 @@ def test_validate_and_limit_jobs_node_some_invalid(
 
 
 @patch("src.graph.get_agent_factory")  # Patch the getter function
-def test_validate_and_limit_jobs_node_limit_applied(
+@pytest.mark.asyncio
+async def test_validate_and_limit_jobs_node_limit_applied(
     mock_get_agent_factory: Any,
     initial_state: AgenticHireState,
     mock_job_offer: JobOffer,
 ) -> None:
+    from unittest.mock import AsyncMock
+
     mock_factory_instance = MagicMock()
     mock_get_agent_factory.return_value = mock_factory_instance
 
-    mock_factory_instance.job_validator.is_job_valid.return_value = True
+    mock_factory_instance.job_validator.is_job_valid = AsyncMock(return_value=True)
 
     jobs = [mock_job_offer.model_copy(update={"id": f"job{i}"}) for i in range(10)]
 
@@ -156,7 +166,7 @@ def test_validate_and_limit_jobs_node_limit_applied(
         AgenticHireState, {**initial_state, "found_jobs": jobs, "max_offers": 3}
     )
 
-    result = validate_and_limit_jobs_node(state)
+    result = await validate_and_limit_jobs_node(state)
 
     assert len(result["valid_jobs"]) == 3
     assert len(result["rejected_jobs"]) == 0
@@ -166,17 +176,20 @@ def test_validate_and_limit_jobs_node_limit_applied(
 
 
 @patch("src.graph.get_agent_factory")  # Patch the getter function
-def test_validate_and_limit_jobs_node_no_jobs(
+@pytest.mark.asyncio
+async def test_validate_and_limit_jobs_node_no_jobs(
     mock_get_agent_factory: Any, initial_state: AgenticHireState
 ) -> None:
+    from unittest.mock import AsyncMock
+
     mock_factory_instance = MagicMock()
     mock_get_agent_factory.return_value = mock_factory_instance
 
-    mock_factory_instance.job_validator.is_job_valid.return_value = True
+    mock_factory_instance.job_validator.is_job_valid = AsyncMock(return_value=True)
 
     state = cast(AgenticHireState, {**initial_state, "found_jobs": [], "max_offers": 5})
 
-    result = validate_and_limit_jobs_node(state)
+    result = await validate_and_limit_jobs_node(state)
 
     assert len(result["valid_jobs"]) == 0
     assert len(result["rejected_jobs"]) == 0

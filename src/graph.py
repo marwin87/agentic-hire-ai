@@ -42,7 +42,7 @@ def should_rescout(state: AgenticHireState) -> str:
     return "rescout"
 
 
-def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any]:
+async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any]:
     """
     Node to filter out invalid or expired job offers and limit the number.
     """
@@ -56,7 +56,7 @@ def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any]:
     validated_jobs_with_status = []
     rejected_jobs = []  # New list for invalid jobs
     for job in found_jobs:
-        is_valid = factory.job_validator.is_job_valid(job)
+        is_valid = await factory.job_validator.is_job_valid(job)
         if is_valid:
             validated_jobs_with_status.append(job)
         else:

@@ -1,11 +1,11 @@
-import requests
+import httpx
 from src.config.settings import config
 from langchain_core.tools import tool
 from loguru import logger
 
 
 @tool
-def job_search_tool(query: str) -> str:
+async def job_search_tool(query: str) -> str:
     """
     Search the web using OrioSearch API for job postings.
     Input should be a specific search query like 'Senior Python Developer jobs London'.
@@ -15,14 +15,15 @@ def job_search_tool(query: str) -> str:
     payload: dict[str, str | int] = {"query": query, "num_results": 10}
 
     try:
-        response = requests.post(config.oriosearch_base_url, json=payload, timeout=10)
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(config.oriosearch_base_url, json=payload)
+            response.raise_for_status()
 
-        # We return the raw string or JSON-like string for the LLM to parse
-        results = response.json()
-        return str(results)
+            # We return the raw string or JSON-like string for the LLM to parse
+            results = response.json()
+            return str(results)
 
-    except requests.exceptions.RequestException as e:
+    except httpx.HTTPError as e:
         return f"Error connecting to OrioSearch: {str(e)}"
 
 

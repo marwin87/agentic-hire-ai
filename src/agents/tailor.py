@@ -14,7 +14,7 @@ class TailorAgent:
     def __init__(self, llm: Any) -> None:
         self.llm = llm
 
-    def __call__(self, state: AgenticHireState) -> dict[str, Any]:
+    async def __call__(self, state: AgenticHireState) -> dict[str, Any]:
         logger.info("--- [NODE] EXECUTING TAILOR (CONTENT GENERATION) ---")
 
         shortlisted_jobs = state.get("shortlisted_jobs", [])
@@ -60,7 +60,7 @@ class TailorAgent:
 
             # Generate the content
             logger.debug("Requesting LLM to generate tailor analysis...")
-            response = self.llm.invoke(
+            response = await self.llm.ainvoke(
                 [
                     SystemMessage(
                         content="You are a highly critical and skeptical Career Advisor."

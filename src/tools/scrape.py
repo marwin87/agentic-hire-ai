@@ -1,11 +1,11 @@
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from langchain_core.tools import tool
 from loguru import logger
 
 
 @tool
-def scrape_webpage_tool(url: str) -> str:
+async def scrape_webpage_tool(url: str) -> str:
     """
     Fetches and extracts text content from a webpage URL.
     Use this to read the content of a job portal or a specific job offer page.
@@ -16,8 +16,9 @@ def scrape_webpage_tool(url: str) -> str:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
         # Remove scripts and styles

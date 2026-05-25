@@ -1,3 +1,4 @@
+import asyncio
 from src.schema.state import AgenticHireState, JobOffer
 from src.tools.vectordb import CVVectorManager
 from pydantic import BaseModel, Field
@@ -25,7 +26,7 @@ class OrchestratorAgent:
         # Create a structured judge
         self.judge = self.llm.with_structured_output(MatchRating)
 
-    def __call__(self, state: AgenticHireState) -> dict[str, Any]:
+    async def __call__(self, state: AgenticHireState) -> dict[str, Any]:
         logger.info("--- [NODE] EXECUTING ORCHESTRATOR (MATCHMAKER) ---")
 
         valid_jobs = state.get("valid_jobs", [])
@@ -47,7 +48,10 @@ class OrchestratorAgent:
             # We search for the job title and description in our vectors
             description_snippet = job.description[:200] if job.description else ""
             search_query = f"{job.title} {description_snippet}"
-            relevant_cv_parts = self.vector_manager.get_context(search_query, k=3)
+            # Chroma has no async API, so wrap in asyncio.to_thread to avoid blocking
+            relevant_cv_parts = await asyncio.to_thread(
+                self.vector_manager.get_context, search_query, 3
+            )
 
             logger.debug(f"RAG retrieved context length: {len(relevant_cv_parts)}")
 
@@ -68,12 +72,12 @@ class OrchestratorAgent:
             - 0.6: Good match (has the foundation, can learn the rest).
             - < 0.5: Poor match.
 
-            Consider synonyms (e.g., 'GenAI' matches 'LLM' or 'GPT'). 
+            Consider synonyms (e.g., 'GenAI' matches 'LLM' or 'GPT').
             Don't penalize if 'Remote' isn't on the CV if the tech skills are a 100% match.
             """
 
             logger.debug("Requesting LLM match rating evaluation...")
-            rating = self.judge.invoke(prompt)
+            rating = await self.judge.ainvoke(prompt)
 
             # 3. Decision Step: Add to shortlist if it's a strong match
             if rating.score >= 0.6:

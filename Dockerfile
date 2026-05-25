@@ -46,12 +46,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Expose Streamlit port
-EXPOSE 8501
+# Expose both Streamlit and FastAPI ports
+EXPOSE 8501 8000
 
-# Health check: Streamlit /_stcore/health endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health').read()" || exit 1
-
-# Run Streamlit with explicit host/port configuration
+# Default to Streamlit (can be overridden by docker-compose)
 CMD ["streamlit", "run", "ui.py", "--server.port=8501", "--server.address=0.0.0.0"]

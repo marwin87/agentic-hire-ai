@@ -1,4 +1,4 @@
-import time
+import asyncio
 import urllib.parse
 from datetime import datetime
 from typing import List, Set, Any
@@ -44,7 +44,7 @@ class ScoutAgent:
         )
         return normalized
 
-    def __call__(self, state: AgenticHireState) -> dict[str, Any]:
+    async def __call__(self, state: AgenticHireState) -> dict[str, Any]:
         scout_runs = state.get("scout_runs", 0) + 1
         logger.info(f"--- [NODE] EXECUTING SCOUT AGENT (Run {scout_runs}) ---")
 
@@ -126,7 +126,7 @@ class ScoutAgent:
         )
         for i in range(config.scout_max_iterations):
             logger.debug(f"LLM interaction loop iteration {i + 1}")
-            response = self.llm.invoke(messages)
+            response = await self.llm.ainvoke(messages)
             messages.append(response)
 
             if not response.tool_calls:
@@ -137,7 +137,7 @@ class ScoutAgent:
                 logger.debug(f"[SCOUT] Executing tool: {tool_call['name']}")
                 try:
                     if tool_call["name"] == "job_search_tool":
-                        raw_results = job_search_tool.invoke(tool_call["args"])
+                        raw_results = await job_search_tool.ainvoke(tool_call["args"])
                         messages.append(
                             ToolMessage(
                                 name="job_search_tool",
@@ -146,7 +146,7 @@ class ScoutAgent:
                             )
                         )
                     elif tool_call["name"] == "scrape_webpage_tool":
-                        raw_results = scrape_webpage_tool.invoke(tool_call["args"])
+                        raw_results = await scrape_webpage_tool.ainvoke(tool_call["args"])
                         messages.append(
                             ToolMessage(
                                 name="scrape_webpage_tool",
@@ -154,7 +154,7 @@ class ScoutAgent:
                                 content=str(raw_results),
                             )
                         )
-                    time.sleep(config.scout_rate_limit_delay)
+                    await asyncio.sleep(config.scout_rate_limit_delay)
                 except Exception as e:
                     logger.error(f"Tool execution failed: {str(e)}")
                     messages.append(
@@ -168,7 +168,7 @@ class ScoutAgent:
         # Ensure we have a final AI summary if the loop maxed out on tool calls
         if messages and getattr(messages[-1], "type", "") == "tool":
             logger.debug("Forcing final LLM summarization after tool executions.")
-            final_response = self.llm.invoke(messages)
+            final_response = await self.llm.ainvoke(messages)
             messages.append(final_response)
 
         logger.info("Parsing found jobs from LLM messages.")
@@ -204,8 +204,8 @@ class ScoutAgent:
             )
             try:
                 fallback_query = f"{target_criteria} open positions"
-                time.sleep(config.scout_rate_limit_delay)
-                raw_results = job_search_tool.invoke({"query": fallback_query})
+                await asyncio.sleep(config.scout_rate_limit_delay)
+                raw_results = await job_search_tool.ainvoke({"query": fallback_query})
                 parsed_fallback = self.parser.parse(str(raw_results))
                 all_found_jobs = [
                     job
