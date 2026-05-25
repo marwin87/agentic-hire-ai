@@ -32,7 +32,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | F-01  | `fastapi-scaffold`         | (foundation) FastAPI server running locally       | —                    | FR-004, FR-005, FR-006 | done  |
 | F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007, FR-008 | done  |
 | F-03  | `jwt-auth-middleware`      | (foundation) JWT tokens issued, auth endpoints live | F-01                | FR-001, FR-002 | done  |
-| F-04  | `cv-vision-to-pgvector`    | (foundation) CV embeddings stored in pgvector    | F-02                | FR-009, FR-013 | proposed  |
+| F-04  | `cv-vision-to-pgvector`    | (foundation) CV embeddings stored in pgvector    | F-02                | FR-009, FR-013 | done  |
 | S-01  | `user-signup-auth`         | sign up with email + password and receive JWT    | F-01, F-02, F-03     | FR-001, FR-002, FR-003 | proposed  |
 | S-02  | `user-login-refresh`       | log in and refresh JWT token                     | F-03, S-01           | FR-002         | proposed  |
 | S-03  | `user-cv-upload`           | upload CV, trigger embedding, verify storage     | F-01, F-02, F-04     | FR-003, FR-009, FR-013 | proposed  |
@@ -122,7 +122,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - **CV file storage method** (filesystem vs bytea) — Owner: user. Block: yes. Determines whether S-03 stores file path (FS) or binary (Postgres).
 - **Risk:** Vision LLM + embeddings are performance-sensitive and must match prior ChromaDB quality. Risk: slow ingestion, embedding drift. Mitigation: regression test on sample CVs before/after refactor; caching strategy (hash-based caching from prior system retained).
-- **Status:** blocked (Unknown unresolved: Q2 CV storage method)
+- **Status:** done
 
 ### F-05: Docker Compose hardening
 
@@ -295,3 +295,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **F-01: (foundation) FastAPI server running locally** — Archived 2026-05-25 → `context/archive/2026-05-25-fastapi-scaffold/`. Lesson: —.
 - **F-02: (foundation) PostgreSQL + pgvector schema ready** — Archived 2026-05-25 → `context/archive/2026-05-25-postgresql-pgvector-setup/`. Lesson: —.
 - **F-03: (foundation) JWT tokens issued, auth endpoints live** — Archived 2026-05-25 → `context/archive/2026-05-25-jwt-auth-middleware/`. Lesson: —.
+- **F-04: (foundation) CV embeddings stored in pgvector** — Archived 2026-05-25 → `context/archive/2026-05-25-cv-vision-to-pgvector/`. Lesson: —.
