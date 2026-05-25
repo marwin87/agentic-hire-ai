@@ -531,10 +531,10 @@ No database schema migration required if SearchSession model is deferred (Phase 
 
 #### Automated
 
-- [ ] 3.1 Route handler imports without errors
-- [ ] 3.2 Type checking passes
-- [ ] 3.3 Unit tests pass (mock LLM, database)
-- [ ] 3.4 Database operations tested
+- [x] 3.1 Route handler imports without errors
+- [x] 3.2 Type checking passes
+- [x] 3.3 Unit tests pass (mock LLM, database)
+- [x] 3.4 Database operations tested
 
 #### Manual
 
@@ -549,8 +549,8 @@ No database schema migration required if SearchSession model is deferred (Phase 
 
 #### Automated
 
-- [ ] 4.1 All new tests pass
-- [ ] 4.2 Existing tests still pass
+- [x] 4.1 All new tests pass
+- [x] 4.2 Existing tests still pass (6/6 scout tests pass; other failures pre-existing)
 - [ ] 4.3 Coverage for scout endpoint ≥ 80%
 - [ ] 4.4 Linting passes
 

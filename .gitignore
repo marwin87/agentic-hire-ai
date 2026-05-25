@@ -1,9 +1,5 @@
 /.venv/
 /.env
 /data/cv/
-/data/chroma_db/
 __pycache__/
-/.claude/
-/.agents/
 /.idea/
-/skills-lock.json
