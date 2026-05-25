@@ -518,14 +518,14 @@ No database schema migration required if SearchSession model is deferred (Phase 
 
 #### Automated
 
-- [x] 2.1 Type checking passes: mypy src/agents/ src/api/
-- [x] 2.2 Scout agent tests pass
-- [x] 2.3 No event loop blocking detected
+- [x] 2.1 Type checking passes: mypy src/agents/ src/api/ — dd8aeea
+- [x] 2.2 Scout agent tests pass — dd8aeea
+- [x] 2.3 No event loop blocking detected — dd8aeea
 
 #### Manual
 
-- [ ] 2.4 FastAPI server runs without freezing
-- [ ] 2.5 Scout endpoint responds within expected timeout
+- [x] 2.4 FastAPI server runs without freezing — dd8aeea
+- [x] 2.5 Scout endpoint responds within expected timeout — dd8aeea
 
 ### Phase 3: Scout API Endpoint Implementation
 
