@@ -11,18 +11,29 @@ from loguru import logger
 from src.agents.agents import get_agent_factory
 from src.api.routes import search, validation, scoring, evaluation
 from src.config.settings import config
+from src.db import init_db, close_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Any:
     """Manage FastAPI application lifecycle (startup/shutdown)."""
+    # Startup: initialize database
+    logger.info("FastAPI startup: initializing database...")
+    await init_db(config)
+    logger.info(f"Database initialized: {config.database_url}")
+    logger.info("Note: Run 'alembic upgrade head' to apply pending migrations")
+
     # Startup: initialize agent factory singleton
     logger.info("FastAPI startup: initializing AgentFactory...")
     factory = get_agent_factory()
     logger.info(f"AgentFactory initialized with LLM models: scout={config.scout_model_name}, orchestrator={config.orchestrator_model_name}, tailor={config.tailor_model_name}")
+
     yield
-    # Shutdown: cleanup if needed
-    logger.info("FastAPI shutdown: cleaning up resources...")
+
+    # Shutdown: cleanup
+    logger.info("FastAPI shutdown: closing database connections...")
+    await close_db()
+    logger.info("FastAPI shutdown: cleanup complete")
 
 
 app = FastAPI(
