@@ -51,6 +51,18 @@ class AppConfig(BaseSettings):
         "data/cv/sample_cv.pdf", description="Path to the CV file."
     )
 
+    # Database settings
+    database_url: str = Field(
+        "postgresql+asyncpg://agentic_hire:dev_password@localhost:5432/agentic_hire",
+        description="PostgreSQL connection string with asyncpg driver.",
+    )
+    embedding_dimension: int = Field(
+        1536, description="Vector embedding dimension for pgvector (default: OpenRouter embeddings)."
+    )
+    postgres_version: str = Field(
+        "17", description="PostgreSQL version (informational)."
+    )
+
     # Job validator settings
     validator_timeout: int = Field(
         10, description="HTTP timeout in seconds for job validation requests."
