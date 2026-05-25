@@ -1,8 +1,9 @@
 ---
 change_id: jwt-auth-middleware
-status: implemented
+status: archived
 created: 2026-05-25
 updated: 2026-05-25
+archived_at: 2026-05-25T00:00:00Z
 ---
 
 # F-03: JWT Auth Middleware

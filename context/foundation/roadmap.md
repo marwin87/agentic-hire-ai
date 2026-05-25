@@ -31,7 +31,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | ----- | -------------------------- | ------------------------------------------------- | -------------------- | -------------- | --------- |
 | F-01  | `fastapi-scaffold`         | (foundation) FastAPI server running locally       | —                    | FR-004, FR-005, FR-006 | done  |
 | F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007, FR-008 | done  |
-| F-03  | `jwt-auth-middleware`      | (foundation) JWT tokens issued, auth endpoints live | F-01                | FR-001, FR-002 | proposed  |
+| F-03  | `jwt-auth-middleware`      | (foundation) JWT tokens issued, auth endpoints live | F-01                | FR-001, FR-002 | done  |
 | F-04  | `cv-vision-to-pgvector`    | (foundation) CV embeddings stored in pgvector    | F-02                | FR-009, FR-013 | proposed  |
 | S-01  | `user-signup-auth`         | sign up with email + password and receive JWT    | F-01, F-02, F-03     | FR-001, FR-002, FR-003 | proposed  |
 | S-02  | `user-login-refresh`       | log in and refresh JWT token                     | F-03, S-01           | FR-002         | proposed  |
@@ -108,7 +108,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - **JWT token expiration window** (7 days vs 24 hours vs 1 hour?) — Owner: user. Block: yes. Affects session lifecycle and refresh token strategy.
 - **Risk:** Implementing auth correctly is critical for security. Risk: token expiration edge cases, password validation bypass. Mitigation: use industry-standard libraries (PyJWT, passlib); strict code review on auth endpoints.
-- **Status:** blocked (Unknown unresolved: Q1 token expiration window)
+- **Status:** done
 
 ### F-04: CV Vision pipeline refactor
 
@@ -294,3 +294,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 - **F-01: (foundation) FastAPI server running locally** — Archived 2026-05-25 → `context/archive/2026-05-25-fastapi-scaffold/`. Lesson: —.
 - **F-02: (foundation) PostgreSQL + pgvector schema ready** — Archived 2026-05-25 → `context/archive/2026-05-25-postgresql-pgvector-setup/`. Lesson: —.
+- **F-03: (foundation) JWT tokens issued, auth endpoints live** — Archived 2026-05-25 → `context/archive/2026-05-25-jwt-auth-middleware/`. Lesson: —.
