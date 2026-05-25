@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgenticHire AI - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .user-info {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .user-field {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .user-field:last-child {
+            border-bottom: none;
+        }
+
+        .user-field label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .user-field value {
+            color: #666;
+            word-break: break-all;
+        }
+
+        .error {
+            background: #ffebee;
+            border: 1px solid #d32f2f;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 20px 0;
+            color: #d32f2f;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .welcome-message {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>AgenticHire AI</h1>
+
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading your dashboard...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // Token & API Management
+        // ============================================
+
+        function getAccessToken() {
+            return localStorage.getItem("access_token");
+        }
+
+        async function makeRequest(endpoint, method, body, token) {
+            const headers = { "Content-Type": "application/json" };
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+
+            const options = { method, headers, credentials: "include" };
+            if (body) options.body = JSON.stringify(body);
+
+            return fetch(`/api${endpoint}`, options);
+        }
+
+        async function apiCall(endpoint, method, body = null) {
+            let token = getAccessToken();
+
+            // First attempt
+            let response = await makeRequest(endpoint, method, body, token);
+
+            // If 401 (token expired), refresh and retry once
+            if (response.status === 401 && token) {
+                const refreshed = await refreshToken();
+                if (refreshed) {
+                    token = getAccessToken();
+                    response = await makeRequest(endpoint, method, body, token);
+                }
+            }
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw { status: response.status, ...error };
+            }
+            return response.json();
+        }
+
+        async function refreshToken() {
+            try {
+                const response = await fetch("/api/refresh", {
+                    method: "POST",
+                    credentials: "include"
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem("access_token", data.access_token);
+                    return true;
+                }
+            } catch (error) {
+                console.error("Token refresh failed:", error);
+            }
+            return false;
+        }
+
+        // ============================================
+        // Dashboard Load
+        // ============================================
+
+        async function loadDashboard() {
+            try {
+                const data = await apiCall("/dashboard", "GET");
+                displayDashboard(data);
+            } catch (error) {
+                if (error.status === 401) {
+                    displayError("Session expired. Please log in again.");
+                    setTimeout(() => window.location.href = "/", 2000);
+                } else {
+                    displayError(error.detail || "Failed to load dashboard");
+                }
+            }
+        }
+
+        function displayDashboard(data) {
+            const content = document.getElementById("content");
+            content.innerHTML = `
+                <div class="welcome-message">${data.message}</div>
+                <div class="user-info">
+                    <div class="user-field">
+                        <label>User ID:</label>
+                        <value>${data.user_id}</value>
+                    </div>
+                    <div class="user-field">
+                        <label>Email:</label>
+                        <value>${data.email}</value>
+                    </div>
+                </div>
+                <button onclick="logout()">Log Out</button>
+            `;
+        }
+
+        function displayError(message) {
+            const content = document.getElementById("content");
+            content.innerHTML = `
+                <div class="error">${message}</div>
+                <button onclick="window.location.href = '/'">Back to Login</button>
+            `;
+        }
+
+        function logout() {
+            localStorage.removeItem("access_token");
+            window.location.href = "/";
+        }
+
+        // ============================================
+        // Initialize
+        // ============================================
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const token = getAccessToken();
+            if (!token) {
+                displayError("Not authenticated. Please log in.");
+                setTimeout(() => window.location.href = "/", 2000);
+                return;
+            }
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
