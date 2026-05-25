@@ -29,6 +29,9 @@ services:
       # Required: OpenRouter API key for LLM calls
       AGENTIC_HIRE_OPENROUTER_API_KEY: ${AGENTIC_HIRE_OPENROUTER_API_KEY}
 
+      # Required: JWT secret key (generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))')
+      AGENTIC_HIRE_JWT_SECRET_KEY: ${AGENTIC_HIRE_JWT_SECRET_KEY:-dev_secret_key_change_in_production}
+
       # Required: PostgreSQL connection string
       AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentic_hire}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-agentic_hire}
 
@@ -67,7 +70,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    entrypoint: /app/docker-entrypoint.sh
     ports:
       - "8000:8000"
     depends_on:
@@ -76,6 +79,9 @@ services:
     environment:
       # Required: OpenRouter API key for LLM calls
       AGENTIC_HIRE_OPENROUTER_API_KEY: ${AGENTIC_HIRE_OPENROUTER_API_KEY}
+
+      # Required: JWT secret key (generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))')
+      AGENTIC_HIRE_JWT_SECRET_KEY: ${AGENTIC_HIRE_JWT_SECRET_KEY:-dev_secret_key_change_in_production}
 
       # Required: PostgreSQL connection string
       AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentic_hire}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-agentic_hire}

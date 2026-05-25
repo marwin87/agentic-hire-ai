@@ -13,7 +13,7 @@ from src.auth import hash_password, verify_password, encode_token, decode_token,
 from src.config.settings import config
 from src.db import User
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/api", tags=["auth"])
 
 
 @router.post("/signup", response_model=TokenResponse)

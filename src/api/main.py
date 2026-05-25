@@ -98,11 +98,15 @@ async def root() -> FileResponse:
 
 
 @app.get("/dashboard")
-async def dashboard(user: User = Depends(get_current_user)) -> dict[str, Any]:
-    """Dashboard endpoint — requires authentication.
+async def dashboard_page() -> FileResponse:
+    """Serve dashboard.html for authenticated users."""
+    dashboard_html = Path(__file__).parent.parent.parent / "ui" / "dashboard.html"
+    return FileResponse(dashboard_html, media_type="text/html")
 
-    Returns user information to confirm successful login.
-    """
+
+@app.get("/api/dashboard")
+async def get_dashboard(user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """API endpoint — returns user information for authenticated users."""
     return {
         "message": f"Welcome, {user.email}!",
         "user_id": str(user.id),

@@ -8,6 +8,7 @@ import re
 import functools
 import html
 import time
+from uuid import uuid4
 from typing import Any
 
 # --- BACKEND IMPORTS ---
@@ -32,6 +33,9 @@ init_database()
 
 
 # --- STATE ---
+if "user_id" not in st.session_state:
+    st.session_state.user_id = uuid4()
+
 if "running" not in st.session_state:
     st.session_state.running = False
 
@@ -391,14 +395,15 @@ def streamlit_app() -> None:
                 with StreamlitLogSink(terminal_placeholder, st.session_state.logs):
                     status_placeholder.info("Agents are running...")
 
-                    cv_manager = _prepare_cv_data(cv_path, get_agent_factory())
+                    factory = get_agent_factory(user_id=st.session_state.user_id)
+                    cv_manager = _prepare_cv_data(cv_path, factory)
 
                     state = _initialize_state(
                         cv_manager, config, user_prompt=st.session_state.criteria
                     )
 
-                    # Inject the user's search criteria into the graph state
-                    # (Note: Update "search_parameters" to match your actual LangGraph state schema)
+                    # Inject user context and search criteria into state
+                    state["user_id"] = st.session_state.user_id
                     state["search_parameters"] = st.session_state.criteria
 
                     final_state = _run_graph(state, build_graph())

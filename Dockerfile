@@ -25,9 +25,11 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install only runtime dependencies (poppler-utils for pdf2image)
+# Install only runtime dependencies (poppler-utils for pdf2image, netcat for health checks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
+    netcat-openbsd \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only the virtual environment from builder (reduces image size ~60%)
@@ -37,6 +39,14 @@ COPY --from=builder /app/.venv /app/.venv
 COPY src/ ./src/
 COPY main.py ui.py ./
 COPY ui/ ./ui/
+
+# Copy database migrations
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
+
+# Copy and make entrypoint script executable
+COPY docker-entrypoint.sh ./
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Create data directories (cv will be mounted as a volume at runtime)
 RUN mkdir -p /app/data/cv /app/data/chroma_db

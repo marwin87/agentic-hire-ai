@@ -436,7 +436,7 @@
             }
 
             try {
-                const data = await apiCall("/signup", "POST", { email, password });
+                const data = await apiCall("/signup", "POST", { email, password, password_confirm: passwordConfirm });
                 storeTokens(data.access_token, data.refresh_token);
                 showSuccessMessage("Account created! Redirecting to login...");
                 setTimeout(() => toggleForm("login"), 2000);
