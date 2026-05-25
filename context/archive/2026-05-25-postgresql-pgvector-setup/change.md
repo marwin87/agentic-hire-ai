@@ -2,7 +2,8 @@
 change_id: postgresql-pgvector-setup
 title: PostgreSQL + pgvector schema setup
 created: 2026-05-25
-status: implementing
+status: archived
+archived_at: 2026-05-25T22:30:14Z
 updated: 2026-05-25
 phase_1_completed: true
 ---

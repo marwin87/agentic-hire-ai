@@ -30,7 +30,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | ID    | Change ID                  | Outcome (user can …)                              | Prerequisites        | PRD refs       | Status    |
 | ----- | -------------------------- | ------------------------------------------------- | -------------------- | -------------- | --------- |
 | F-01  | `fastapi-scaffold`         | (foundation) FastAPI server running locally       | —                    | FR-004, FR-005, FR-006 | done  |
-| F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007, FR-008 | proposed  |
+| F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007, FR-008 | done  |
 | F-03  | `jwt-auth-middleware`      | (foundation) JWT tokens issued, auth endpoints live | F-01                | FR-001, FR-002 | proposed  |
 | F-04  | `cv-vision-to-pgvector`    | (foundation) CV embeddings stored in pgvector    | F-02                | FR-009, FR-013 | proposed  |
 | S-01  | `user-signup-auth`         | sign up with email + password and receive JWT    | F-01, F-02, F-03     | FR-001, FR-002, FR-003 | proposed  |
@@ -94,7 +94,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - **CV file storage method** (filesystem with metadata vs Postgres bytea?) — Owner: user. Block: yes. Affects schema design and chunking strategy.
 - **Risk:** pgvector + PostgreSQL are new layers (current system uses ChromaDB only). Risk: schema evolution, data migration testing. Mitigation: single-user local deployment simplifies schema (no sharding needed).
-- **Status:** blocked (Unknown unresolved: Q2 CV storage method)
+- **Status:** done
 
 ### F-03: JWT auth middleware
 
@@ -293,3 +293,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Done
 
 - **F-01: (foundation) FastAPI server running locally** — Archived 2026-05-25 → `context/archive/2026-05-25-fastapi-scaffold/`. Lesson: —.
+- **F-02: (foundation) PostgreSQL + pgvector schema ready** — Archived 2026-05-25 → `context/archive/2026-05-25-postgresql-pgvector-setup/`. Lesson: —.
