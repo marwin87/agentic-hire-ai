@@ -1,7 +1,7 @@
 ---
 change_id: scout-api-endpoint
 title: Scout api endpoint
-status: implementing
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 archived_at: null
