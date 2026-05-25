@@ -551,12 +551,12 @@ No database schema migration required if SearchSession model is deferred (Phase 
 
 - [x] 4.1 All new tests pass
 - [x] 4.2 Existing tests still pass (6/6 scout tests pass; other failures pre-existing)
-- [ ] 4.3 Coverage for scout endpoint ≥ 80%
-- [ ] 4.4 Linting passes
+- [x] 4.3 Coverage for scout endpoint ≥ 80%
+- [x] 4.4 Linting passes
 
 #### Manual
 
-- [ ] 4.5 Streamlit UI still works (backward compatibility)
-- [ ] 4.6 CLI (main.py) still works
-- [ ] 4.7 End-to-end: signup → CV upload → scout → verify results
-- [ ] 4.8 FastAPI OpenAPI docs show /scout endpoint (auto-generated)
+- [x] 4.5 Streamlit UI still works (backward compatibility)
+- [x] 4.6 CLI (main.py) still works
+- [x] 4.7 End-to-end: signup → CV upload → scout → verify results
+- [x] 4.8 FastAPI OpenAPI docs show /scout endpoint (auto-generated)
