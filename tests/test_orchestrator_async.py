@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 from src.agents.orchestrator import OrchestratorAgent, MatchRating
 from src.schema.state import JobOffer, AgenticHireState
 from typing import cast
@@ -27,7 +28,9 @@ def mock_vector_manager() -> MagicMock:
 @pytest.fixture
 def orchestrator(mock_llm: MagicMock, mock_vector_manager: MagicMock) -> OrchestratorAgent:
     """Create an OrchestratorAgent with mocked LLM and vector manager."""
-    return OrchestratorAgent(llm=mock_llm, vector_manager=mock_vector_manager)
+    return OrchestratorAgent(
+        llm=mock_llm, vector_manager=mock_vector_manager, user_id=uuid4()
+    )
 
 
 @pytest.fixture

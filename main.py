@@ -1,7 +1,9 @@
+import asyncio
 from src.graph import build_graph
 from src.agents.agents import get_agent_factory
 from src.config.logging import setup_logging
 from src.config.settings import config
+from src.db.database import init_db, close_db
 from loguru import logger
 from typing import Any, cast
 
@@ -90,14 +92,21 @@ def main() -> None:
     _configure_application()
     logger.info("Starting AgenticHire AI main process.")
 
-    # Get the factory and build the graph
-    factory_instance = get_agent_factory()
-    app_instance = build_graph()
+    # Initialize database engine before creating agents
+    asyncio.run(init_db(config))
 
-    cv_manager = _prepare_cv_data(config.cv_file_path, factory_instance)
-    initial_state = _initialize_state(cv_manager, config)
-    final_state = _run_graph(initial_state, app_instance)
-    _display_results(final_state)
+    try:
+        # Get the factory and build the graph
+        factory_instance = get_agent_factory()
+        app_instance = build_graph()
+
+        cv_manager = _prepare_cv_data(config.cv_file_path, factory_instance)
+        initial_state = _initialize_state(cv_manager, config)
+        final_state = _run_graph(initial_state, app_instance)
+        _display_results(final_state)
+    finally:
+        # Clean up database connections
+        asyncio.run(close_db())
 
 
 if __name__ == "__main__":

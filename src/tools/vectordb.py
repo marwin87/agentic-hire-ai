@@ -2,9 +2,11 @@ import os
 import base64
 import hashlib
 import re
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from typing import List, Dict, Any, Optional, cast
+from uuid import UUID
 
 # OS Dependencies Check
 try:
@@ -20,49 +22,45 @@ from langchain_text_splitters import (
     RecursiveCharacterTextSplitter,
     MarkdownHeaderTextSplitter,
 )
-from langchain_chroma import Chroma
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.db.repositories import CVEmbeddingRepository, CVFileRepository
+from src.db.models import CVEmbedding
+from src.db.database import get_session_factory
 
 
 class CVVectorManager:
     """
-    Manages CV ingestion and retrieval with structure-aware chunking.
+    Manages CV ingestion and retrieval using pgvector backend.
+    Vision pipeline: PDF → Vision LLM OCR → chunks → embeddings → pgvector.
     """
 
     def __init__(
         self,
         vision_model: Any,
         embeddings: Any,
-        db_path: str = "data/chroma_db",
-        collection_name: str = "cv_collection",
+        user_id: UUID,
+        cv_cache_dir: str = "data/cv",
     ) -> None:
-        self.db_path = db_path
-        self.collection_name = collection_name
         self.vision_model = vision_model
         self.embeddings = embeddings  # type: ignore
-        self._vectorstore: Optional[Chroma] = None
-        self.hash_file_path = os.path.join(self.db_path, "cv_hash.txt")
-        self.cv_text_cache_path = os.path.join(self.db_path, "cv_text.md")
-        os.makedirs(self.db_path, exist_ok=True)
+        self.user_id = user_id
+        self.cv_cache_dir = cv_cache_dir
+        os.makedirs(self.cv_cache_dir, exist_ok=True)
 
-    def _init_vectorstore(self) -> None:
-        self._vectorstore = Chroma(
-            collection_name=self.collection_name,
-            embedding_function=cast(Any, self.embeddings),
-            persist_directory=self.db_path,
+        # Cache files stored locally for Vision LLM output (text fallback)
+        self.cv_text_cache_path = os.path.join(
+            self.cv_cache_dir, f"cv_text_{user_id}.md"
         )
 
-    def _ensure_vectorstore_ready(self) -> None:
-        if self._vectorstore is None:
-            self._init_vectorstore()
+    def _run_async(self, coro: Any) -> Any:
+        """Run an async coroutine from sync context (thread-safe)."""
+        runner = asyncio.Runner()
+        try:
+            return runner.run(coro)
+        finally:
+            runner.close()
 
-        if os.path.exists(self.hash_file_path):
-            if self._vectorstore is None:
-                raise RuntimeError("Vector DB failed to initialize.")
-            collection_data: Dict[str, Any] = self._vectorstore.get()
-            if not collection_data or not collection_data.get("documents"):
-                raise RuntimeError("Vector DB is empty or corrupted.")
-        else:
-            raise RuntimeError("CV not ingested yet.")
 
     @staticmethod
     def _calculate_file_hash(file_path: str) -> str:
@@ -130,26 +128,15 @@ class CVVectorManager:
         jobs = re.split(r"\n(?=### )", text)
         return [job.strip() for job in jobs if job.strip()]
 
-    def ingest_cv(self, file_path: str) -> None:
+    async def ingest_cv_async(self, file_path: str) -> Dict[str, Any]:
+        """Async version of CV ingestion that stores to pgvector."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Resume not found at: {file_path}")
 
         new_hash = self._calculate_file_hash(file_path)
-        stored_hash = None
 
-        if os.path.exists(self.hash_file_path):
-            with open(self.hash_file_path, "r") as f:
-                stored_hash = f.read().strip()
-
-        hash_matches = new_hash == stored_hash
-        chroma_db_file = os.path.join(self.db_path, "chroma.sqlite3")
-
-        if hash_matches and os.path.exists(chroma_db_file):
-            print("✅ CV unchanged. Using cached embeddings.")
-            self._init_vectorstore()
-            return
-
-        if hash_matches and os.path.exists(self.cv_text_cache_path):
+        # Check if file hash is cached and embeddings exist in pgvector
+        if os.path.exists(self.cv_text_cache_path):
             print(
                 "✅ CV unchanged. Re-embedding from text cache (skipping Vision LLM)..."
             )
@@ -242,47 +229,82 @@ class CVVectorManager:
         if not final_chunks:
             raise RuntimeError("No chunks generated from CV.")
 
-        # --- Store ---
-        self._vectorstore = Chroma.from_documents(
-            documents=final_chunks,
-            embedding=cast(Any, self.embeddings),
-            persist_directory=self.db_path,
-            collection_name=self.collection_name,
-            ids=[f"id_{i}" for i in range(len(final_chunks))],
-        )
+        # --- Generate embeddings and store in pgvector ---
+        factory = get_session_factory()
+        async with factory() as session:
+            # Delete existing embeddings for this user
+            await CVEmbeddingRepository.delete_by_user(session, self.user_id)
 
-        with open(self.hash_file_path, "w") as f:
-            f.write(new_hash)
+            # Create CVEmbedding objects with embeddings
+            embeddings_list: List[CVEmbedding] = []
+            for chunk in final_chunks:
+                embedding_vector = self.embeddings.embed_query(chunk.page_content)
+                cv_embedding = CVEmbedding(
+                    user_id=self.user_id,
+                    chunk_text=chunk.page_content,
+                    embedding=embedding_vector,
+                )
+                embeddings_list.append(cv_embedding)
 
-        print(f"✅ Stored {len(final_chunks)} structured chunks.")
+            # Bulk insert into pgvector
+            await CVEmbeddingRepository.bulk_insert(session, embeddings_list)
+            await session.commit()
 
-    def get_context(self, query: str, k: int = 4) -> str:
-        self._ensure_vectorstore_ready()
-        if self._vectorstore is None:
-            raise RuntimeError("Vector DB not initialized.")
-        docs = self._vectorstore.similarity_search(query, k=k)
+        print(f"✅ Stored {len(final_chunks)} structured chunks in pgvector.")
+        return {
+            "status": "success",
+            "chunks_stored": len(final_chunks),
+            "hash": new_hash,
+        }
 
-        context_parts: list[str] = []
+    def ingest_cv(self, file_path: str) -> Dict[str, Any]:
+        """Synchronous wrapper for CV ingestion (called via asyncio.to_thread)."""
+        return self._run_async(self.ingest_cv_async(file_path))
 
-        for doc in docs:
-            headers = [v for k, v in doc.metadata.items() if k.startswith("Header")]
-            section_path = " > ".join(headers)
-            prefix = f"[Section: {section_path}]\n" if section_path else ""
-            context_parts.append(f"{prefix}{doc.page_content}")
+    async def get_context_async(self, query: str, limit: int = 5) -> str:
+        """Retrieve relevant CV chunks from pgvector using semantic search."""
+        factory = get_session_factory()
+        async with factory() as session:
+            # Generate embedding for query
+            query_embedding = self.embeddings.embed_query(query)
 
-        result: str = "\n---\n".join(context_parts)
-        return result
+            # Search pgvector for similar chunks (cosine distance, user-filtered)
+            results = await CVEmbeddingRepository.search_by_user_and_query(
+                session, self.user_id, query_embedding, limit=limit
+            )
+
+            if not results:
+                return ""
+
+            context_parts: List[str] = []
+            for embedding in results:
+                context_parts.append(embedding.chunk_text)
+
+            return "\n---\n".join(context_parts)
+
+    def get_context(self, query: str, limit: int = 5) -> str:
+        """Synchronous wrapper for context retrieval (called via asyncio.to_thread)."""
+        return self._run_async(self.get_context_async(query, limit))
+
+    async def get_full_resume_text_async(self) -> str:
+        """Retrieve all CV chunks for this user from pgvector."""
+        from sqlalchemy import select
+
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(CVEmbedding)
+                .where(CVEmbedding.user_id == self.user_id)
+                .order_by(CVEmbedding.created_at)
+            )
+            embeddings = result.scalars().all()
+
+            if not embeddings:
+                raise RuntimeError("No CV embeddings found.")
+
+            chunks = [e.chunk_text for e in embeddings]
+            return "\n".join(chunks)
 
     def get_full_resume_text(self) -> str:
-        self._ensure_vectorstore_ready()
-        if self._vectorstore is None:
-            raise RuntimeError("Vector DB not initialized.")
-        all_docs = self._vectorstore.get()
-
-        if not all_docs or not all_docs.get("documents"):
-            raise RuntimeError("No documents found.")
-
-        documents = all_docs.get("documents")
-        if not documents:
-            raise RuntimeError("No documents found.")
-        return "\n".join(documents)
+        """Synchronous wrapper to get full resume (called via asyncio.to_thread)."""
+        return self._run_async(self.get_full_resume_text_async())

@@ -1,4 +1,5 @@
 import os
+import asyncio
 import streamlit as st
 from loguru import logger
 import tempfile
@@ -13,10 +14,21 @@ from typing import Any
 from main import _prepare_cv_data, _initialize_state, _run_graph
 from src.config.settings import config
 from src.agents.agents import get_agent_factory
+from src.db.database import init_db
 from src.graph import build_graph
 
 # --- PAGE CONFIG ---
 st.set_page_config(layout="wide", page_title="AGENTIC HIRE AI")
+
+
+# --- DATABASE INITIALIZATION (run once per session) ---
+@st.cache_resource
+def init_database() -> None:
+    """Initialize database engine once per Streamlit session."""
+    asyncio.run(init_db(config))
+
+
+init_database()
 
 
 # --- STATE ---
