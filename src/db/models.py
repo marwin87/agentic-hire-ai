@@ -11,6 +11,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Index,
+    Integer,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base
@@ -136,3 +137,26 @@ class Evaluation(Base):  # type: ignore[misc, valid-type]
         return (
             f"<Evaluation(id={self.id}, user_id={self.user_id}, job_id={self.job_id})>"
         )
+
+
+class SearchSession(Base):  # type: ignore[misc, valid-type]
+    """Job search sessions, one per user search request."""
+
+    __tablename__ = "search_sessions"
+    __table_args__ = (
+        Index("ix_search_sessions_user_id_created_at", "user_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    criteria = Column(Text, nullable=False)
+    found_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<SearchSession(id={self.id}, user_id={self.user_id}, criteria='{self.criteria[:50]}...')>"

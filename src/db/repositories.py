@@ -221,3 +221,37 @@ class EvaluationRepository:
             evaluation.match_score = match_score  # type: ignore[assignment]
             evaluation.orchestrator_reasoning = reasoning  # type: ignore[assignment]
             await session.flush()
+
+
+class SearchSessionRepository:
+    """Repository for SearchSession CRUD operations."""
+
+    @staticmethod
+    async def create(
+        session: AsyncSession, user_id: UUID, criteria: str, found_count: int = 0
+    ) -> "SearchSession":  # type: ignore[name-defined]
+        """Create a new search session record."""
+        from src.db.models import SearchSession
+
+        search_session = SearchSession(
+            user_id=user_id, criteria=criteria, found_count=found_count
+        )
+        session.add(search_session)
+        await session.flush()
+        return search_session
+
+    @staticmethod
+    async def get_by_user(
+        session: AsyncSession, user_id: UUID, limit: int = 20, offset: int = 0
+    ) -> List["SearchSession"]:  # type: ignore[name-defined]
+        """Retrieve search sessions for a user with pagination, most recent first."""
+        from src.db.models import SearchSession
+
+        result = await session.execute(
+            select(SearchSession)
+            .where(SearchSession.user_id == user_id)
+            .order_by(SearchSession.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())

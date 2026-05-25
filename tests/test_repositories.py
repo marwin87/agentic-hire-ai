@@ -13,8 +13,9 @@ from src.db.repositories import (
     CVEmbeddingRepository,
     JobRepository,
     EvaluationRepository,
+    SearchSessionRepository,
 )
-from src.db.models import User, CVFile, CVEmbedding, Job, Evaluation
+from src.db.models import User, CVFile, CVEmbedding, Job, Evaluation, SearchSession
 
 
 @pytest.mark.asyncio
@@ -287,3 +288,93 @@ async def test_cv_embedding_repository_search_by_user_and_query() -> None:
 
         assert len(result) == 1
         assert result[0] == embedding1
+
+
+@pytest.mark.asyncio
+async def test_search_session_repository_create() -> None:
+    """Test SearchSessionRepository.create()."""
+    session = AsyncMock(spec=AsyncSession)
+    user_id = uuid4()
+
+    result = await SearchSessionRepository.create(
+        session, user_id=user_id, criteria="Python engineer", found_count=5
+    )
+
+    assert result.user_id == user_id
+    assert result.criteria == "Python engineer"
+    assert result.found_count == 5
+    session.add.assert_called_once()
+    session.flush.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_search_session_repository_create_default_count() -> None:
+    """Test SearchSessionRepository.create() with default found_count."""
+    session = AsyncMock(spec=AsyncSession)
+    user_id = uuid4()
+
+    result = await SearchSessionRepository.create(
+        session, user_id=user_id, criteria="Go engineer"
+    )
+
+    assert result.user_id == user_id
+    assert result.criteria == "Go engineer"
+    assert result.found_count == 0
+    session.add.assert_called_once()
+    session.flush.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_search_session_repository_get_by_user() -> None:
+    """Test SearchSessionRepository.get_by_user()."""
+    session = AsyncMock(spec=AsyncSession)
+    user_id = uuid4()
+    search_session = SearchSession(
+        id=uuid4(),
+        user_id=user_id,
+        criteria="Python engineer",
+        found_count=5,
+        created_at=datetime.now(UTC),
+    )
+
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = [search_session]
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    session.execute.return_value = mock_result
+
+    result = await SearchSessionRepository.get_by_user(session, user_id)
+
+    assert len(result) == 1
+    assert result[0] == search_session
+    session.execute.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_search_session_repository_get_by_user_pagination() -> None:
+    """Test SearchSessionRepository.get_by_user() with pagination."""
+    session = AsyncMock(spec=AsyncSession)
+    user_id = uuid4()
+    search_sessions = [
+        SearchSession(
+            id=uuid4(),
+            user_id=user_id,
+            criteria=f"Engineer {i}",
+            found_count=i,
+            created_at=datetime.now(UTC),
+        )
+        for i in range(5)
+    ]
+
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = search_sessions[1:3]  # Return 2nd and 3rd items
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    session.execute.return_value = mock_result
+
+    result = await SearchSessionRepository.get_by_user(
+        session, user_id, limit=2, offset=1
+    )
+
+    assert len(result) == 2
+    session.execute.assert_called_once()
