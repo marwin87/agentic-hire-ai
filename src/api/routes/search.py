@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, cast
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,7 +48,9 @@ async def scout_search(
 
     try:
         # Initialize AgentFactory with user_id for user-scoped embeddings
-        factory = AgentFactory(user_id=cast(UUID, user.id))
+        if not user.id or not isinstance(user.id, UUID):
+            raise HTTPException(status_code=401, detail="Invalid user identity")
+        factory = AgentFactory(user_id=user.id)
 
         # Retrieve CV context asynchronously from pgvector
         cv_context = ""
@@ -60,10 +62,16 @@ async def scout_search(
             if not cv_context:
                 cv_warning = "CV not uploaded; results based on criteria only"
                 logger.warning(f"No CV found for user {user.id}")
-        except Exception as e:
-            logger.warning(f"Error retrieving CV context for user {user.id}: {e}")
+        except (ValueError, KeyError) as e:
+            logger.warning(f"CV context format error for user {user.id}: {e}")
             cv_context = ""
             cv_warning = "CV context unavailable; results based on criteria only"
+        except Exception as e:
+            logger.error(
+                f"Unexpected error retrieving CV context for user {user.id}: {e}",
+                exc_info=e,
+            )
+            raise
 
         # Build state for Scout agent
         state: AgenticHireState = {
@@ -95,13 +103,16 @@ async def scout_search(
             # Convert JobOffer (Pydantic) to Job (ORM) with user_id
             job_db = Job(
                 id=job_offer.id,
-                user_id=cast(UUID, user.id),
+                user_id=user.id,
                 title=job_offer.title,
                 company=job_offer.company,
                 description=job_offer.description,
                 url=job_offer.url,
                 salary_range=job_offer.salary_range,
             )
+            assert (
+                job_db.user_id == user.id
+            ), f"Job user_id mismatch: {job_db.user_id} != {user.id}"
             await JobRepository.create_or_update(session, job_db)
 
         # Log search session
@@ -113,7 +124,13 @@ async def scout_search(
         )
 
         # Commit database changes
-        await session.commit()
+        try:
+            async with asyncio.timeout(10):
+                await session.commit()
+        except asyncio.TimeoutError:
+            logger.error(f"Database commit timeout for user {user.id}")
+            await session.rollback()
+            raise HTTPException(status_code=503, detail="Database timeout")
         logger.debug(f"Persisted {len(found_jobs)} jobs for user {user.id}")
 
         # Build response with search metadata
@@ -123,16 +140,12 @@ async def scout_search(
             "search_id": search_id,
             "found_jobs": [
                 {
-                    "id": job.id if hasattr(job, "id") else "",
-                    "title": job.title if hasattr(job, "title") else "",
-                    "company": job.company if hasattr(job, "company") else "",
-                    "url": job.url if hasattr(job, "url") else "",
-                    "description": (
-                        job.description if hasattr(job, "description") else None
-                    ),
-                    "salary_range": (
-                        job.salary_range if hasattr(job, "salary_range") else None
-                    ),
+                    "id": job.id,
+                    "title": job.title,
+                    "company": job.company,
+                    "url": job.url,
+                    "description": job.description,
+                    "salary_range": job.salary_range,
                 }
                 for job in found_jobs
             ],
@@ -147,11 +160,15 @@ async def scout_search(
         await session.rollback()
 
         # Return graceful error response (200 with empty results + detail)
+        detail = "Search failed due to an internal error"
+        if config.debug_mode:
+            detail = f"Search failed: {str(e)}"
+
         return {
             "search_id": search_id,
             "found_jobs": [],
             "criteria": request.criteria,
             "count": 0,
             "timestamp": timestamp,
-            "status": f"Search failed: {str(e)}",
+            "status": detail,
         }

@@ -6,7 +6,7 @@ from src.tools.job_validator import JobValidator
 from src.config.settings import config
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import SecretStr
-from typing import Any
+from typing import Any, Awaitable, Callable
 from uuid import UUID, uuid4
 
 
@@ -15,6 +15,12 @@ class AgentFactory:
     Central factory to initialize and provide agents/tools
     with consistent configuration.
     """
+
+    scout: ScoutAgent
+    orchestrator: OrchestratorAgent
+    tailor: TailorAgent
+    job_validator: JobValidator
+    vector_manager: CVVectorManager
 
     def __init__(self, user_id: UUID | None = None) -> None:
         # Use provided user_id or generate a default for MVP single-user mode

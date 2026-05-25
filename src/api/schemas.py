@@ -28,7 +28,7 @@ class SearchJobsRequest(BaseModel):
 
     criteria: str = Field(..., description="Job search criteria")
     max_results: Optional[int] = Field(
-        default=10, description="Maximum number of results to return"
+        default=10, description="Maximum number of results to return", ge=1, le=100
     )
 
 
