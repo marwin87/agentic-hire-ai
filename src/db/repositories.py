@@ -111,11 +111,11 @@ class CVEmbeddingRepository:
     @staticmethod
     async def delete_by_user(session: AsyncSession, user_id: UUID) -> None:
         """Delete all embeddings for a user."""
-        result = await session.execute(
-            select(CVEmbedding).where(CVEmbedding.user_id == user_id)
-        )
-        for embedding in result.scalars():
-            session.delete(embedding)
+        stmt = select(CVEmbedding).where(CVEmbedding.user_id == user_id)
+        result = await session.execute(stmt)
+        embeddings = result.scalars().all()
+        for embedding in embeddings:
+            session.delete(embedding)  # type: ignore[unused-coroutine]
         await session.flush()
 
 

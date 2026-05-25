@@ -5,8 +5,10 @@ import re
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from typing import List, Dict, Any, Optional, cast
+from typing import List, Dict, Any, Optional, cast, TypeVar, overload
 from uuid import UUID
+
+T = TypeVar("T")
 
 # OS Dependencies Check
 try:
@@ -57,7 +59,7 @@ class CVVectorManager:
         """Run an async coroutine from sync context (thread-safe)."""
         runner = asyncio.Runner()
         try:
-            return runner.run(coro)
+            return runner.run(coro)  # type: ignore[return-value]
         finally:
             runner.close()
 
@@ -236,7 +238,10 @@ class CVVectorManager:
 
             # Create CVEmbedding objects with embeddings
             embeddings_list: List[CVEmbedding] = []
-            for chunk in final_chunks:
+            for chunk in final_chunks:  # type: ignore[assignment]
+                assert isinstance(
+                    chunk, Document
+                ), f"Expected Document, got {type(chunk)}"
                 embedding_vector = self.embeddings.embed_query(chunk.page_content)
                 cv_embedding = CVEmbedding(
                     user_id=self.user_id,
@@ -258,7 +263,7 @@ class CVVectorManager:
 
     def ingest_cv(self, file_path: str) -> Dict[str, Any]:
         """Synchronous wrapper for CV ingestion (called via asyncio.to_thread)."""
-        return self._run_async(self.ingest_cv_async(file_path))
+        return cast(Dict[str, Any], self._run_async(self.ingest_cv_async(file_path)))
 
     async def get_context_async(self, query: str, limit: int = 5) -> str:
         """Retrieve relevant CV chunks from pgvector using semantic search."""
@@ -277,13 +282,13 @@ class CVVectorManager:
 
             context_parts: List[str] = []
             for embedding in results:
-                context_parts.append(embedding.chunk_text)
+                context_parts.append(str(embedding.chunk_text))
 
             return "\n---\n".join(context_parts)
 
     def get_context(self, query: str, limit: int = 5) -> str:
         """Synchronous wrapper for context retrieval (called via asyncio.to_thread)."""
-        return self._run_async(self.get_context_async(query, limit))
+        return cast(str, self._run_async(self.get_context_async(query, limit)))
 
     async def get_full_resume_text_async(self) -> str:
         """Retrieve all CV chunks for this user from pgvector."""
@@ -306,4 +311,4 @@ class CVVectorManager:
 
     def get_full_resume_text(self) -> str:
         """Synchronous wrapper to get full resume (called via asyncio.to_thread)."""
-        return self._run_async(self.get_full_resume_text_async())
+        return cast(str, self._run_async(self.get_full_resume_text_async()))
