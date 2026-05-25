@@ -102,7 +102,7 @@ jobs:
           POSTGRES_USER: agentic_hire
           POSTGRES_PASSWORD: dev_password
           POSTGRES_DB: agentic_hire
-        run: docker-compose build
+        run: docker compose build
 
       - name: Start services
         env:
@@ -111,17 +111,17 @@ jobs:
           POSTGRES_PASSWORD: dev_password
           POSTGRES_DB: agentic_hire
         run: |
-          docker-compose up -d
+          docker compose up -d
           sleep 15
 
       - name: Check if services are healthy
         run: |
           # Check database
-          docker-compose exec -T db pg_isready -U agentic_hire || exit 1
+          docker compose exec -T db pg_isready -U agentic_hire || exit 1
 
           # Check API health
           curl -f http://localhost:8000/health || exit 1
 
       - name: Cleanup
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
