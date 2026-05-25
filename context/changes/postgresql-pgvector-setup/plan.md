@@ -408,13 +408,13 @@ Create seed data script for local development, verify schema with sample data, a
 
 ## Progress
 
-- [x] 1.1 Create database module structure (src/db/)
-- [x] 1.2 Update settings.py with database configuration
-- [x] 1.3 Update pyproject.toml with database dependencies
-- [x] 1.4 Initialize Alembic
-- [ ] 2.1 Define SQLAlchemy ORM models (users, jobs, cv_embeddings, evaluations, cv_files)
-- [ ] 2.2 Create Alembic migration with pgvector extension
-- [ ] 2.3 Define database session factory and imports
+- [x] 1.1 Create database module structure (src/db/) — 09dc66c
+- [x] 1.2 Update settings.py with database configuration — 09dc66c
+- [x] 1.3 Update pyproject.toml with database dependencies — 09dc66c
+- [x] 1.4 Initialize Alembic — 09dc66c
+- [x] 2.1 Define SQLAlchemy ORM models (users, jobs, cv_embeddings, evaluations, cv_files)
+- [x] 2.2 Create Alembic migration with pgvector extension
+- [x] 2.3 Define database session factory and imports
 - [ ] 3.1 Add PostgreSQL service to docker-compose.yml
 - [ ] 3.2 Update .env.example with database credentials
 - [ ] 3.3 Update FastAPI lifespan to handle migrations on startup
