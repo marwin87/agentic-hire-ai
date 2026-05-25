@@ -2,16 +2,18 @@
 
 from contextlib import asynccontextmanager
 from typing import Any
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from loguru import logger
 
 from src.agents.agents import get_agent_factory
 from src.api.routes import search, validation, scoring, evaluation, auth
+from src.api.dependencies import get_current_user
 from src.config.settings import config
-from src.db import init_db, close_db
+from src.db import init_db, close_db, User
 
 
 @asynccontextmanager
@@ -86,6 +88,26 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 async def health_check() -> dict[str, str]:
     """Health check endpoint for container orchestration and monitoring."""
     return {"status": "ok"}
+
+
+@app.get("/")
+async def root() -> FileResponse:
+    """Serve auth.html at root path."""
+    auth_html = Path(__file__).parent.parent.parent / "ui" / "auth.html"
+    return FileResponse(auth_html, media_type="text/html")
+
+
+@app.get("/dashboard")
+async def dashboard(user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """Dashboard endpoint — requires authentication.
+
+    Returns user information to confirm successful login.
+    """
+    return {
+        "message": f"Welcome, {user.email}!",
+        "user_id": str(user.id),
+        "email": user.email,
+    }
 
 
 # Register route routers

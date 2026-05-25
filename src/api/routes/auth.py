@@ -216,3 +216,6 @@ async def logout(user: User = Depends(get_current_user)) -> dict[str, str]:
     logger.info(f"User logged out: {user.email}")
     return {"message": "Logged out successfully"}
 
+
+# Note: /dashboard is not in the /api/auth prefix, so it's registered in main.py
+
