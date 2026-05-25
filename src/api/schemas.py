@@ -86,3 +86,16 @@ class TokenResponse(BaseModel):
     )
     token_type: str = Field(..., description="Token type (always 'bearer')")
     expires_in: int = Field(..., description="Access token expiration time in seconds")
+
+
+# CV upload endpoints schemas
+
+
+class UploadCVResponse(BaseModel):
+    """Response model for CV upload endpoint."""
+
+    file_id: str = Field(..., description="CVFile.id UUID")
+    file_path: str = Field(..., description="Relative path where file is stored")
+    file_hash: str = Field(..., description="SHA256 hash of the uploaded file")
+    chunks_stored: int = Field(..., description="Number of embedding chunks created")
+    status: str = Field(..., description="Upload status ('success' or error code)")

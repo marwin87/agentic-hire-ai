@@ -124,6 +124,106 @@
             margin-bottom: 20px;
             font-weight: 500;
         }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+
+        .upload-area:hover {
+            border-color: #5568d3;
+            background: #f0f0ff;
+        }
+
+        .upload-area.dragging {
+            border-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .upload-area p {
+            color: #666;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        #cv-file-input {
+            display: none;
+        }
+
+        .file-info {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin: 15px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .upload-status {
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .upload-status.show {
+            display: block;
+        }
+
+        .upload-status.success {
+            color: #4caf50;
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .upload-status.error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .upload-status.loading {
+            color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -229,8 +329,23 @@
                         <value>${data.email}</value>
                     </div>
                 </div>
+
+                <div class="section-title">Upload CV</div>
+                <div class="upload-area" id="upload-area" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" onclick="document.getElementById('cv-file-input').click()">
+                    <div class="upload-icon">📄</div>
+                    <p><strong>Drag & drop your CV here</strong></p>
+                    <p>or click to browse</p>
+                    <p class="file-info">.pdf files only • Max 10MB</p>
+                </div>
+                <input type="file" id="cv-file-input" accept=".pdf" onchange="handleFileSelect(event)">
+                <div class="progress-bar" id="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="upload-status" id="upload-status"></div>
+
                 <button onclick="logout()">Log Out</button>
             `;
+            setupUploadHandlers();
         }
 
         function displayError(message) {
@@ -244,6 +359,119 @@
         function logout() {
             localStorage.removeItem("access_token");
             window.location.href = "/";
+        }
+
+        // ============================================
+        // CV Upload Handlers
+        // ============================================
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById("upload-area").classList.add("dragging");
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById("upload-area").classList.remove("dragging");
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById("upload-area").classList.remove("dragging");
+
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            const statusEl = document.getElementById("upload-status");
+
+            // Validate file type
+            if (file.type !== "application/pdf") {
+                statusEl.textContent = "❌ Invalid file type. Only PDF files are allowed.";
+                statusEl.className = "upload-status error show";
+                return;
+            }
+
+            // Validate file size (10MB = 10485760 bytes)
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                statusEl.textContent = `❌ File too large. Maximum size is 10MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`;
+                statusEl.className = "upload-status error show";
+                return;
+            }
+
+            // Proceed with upload
+            uploadCV(file);
+        }
+
+        async function uploadCV(file) {
+            const token = getAccessToken();
+            const statusEl = document.getElementById("upload-status");
+            const progressBar = document.getElementById("progress-bar");
+            const progressFill = document.getElementById("progress-fill");
+
+            try {
+                // Show progress bar
+                progressBar.classList.add("active");
+                statusEl.textContent = "⏳ Uploading CV...";
+                statusEl.className = "upload-status loading show";
+
+                // Create FormData
+                const formData = new FormData();
+                formData.append("file", file);
+
+                // Upload
+                const response = await fetch("/api/upload_cv", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: formData,
+                    credentials: "include"
+                });
+
+                progressFill.style.width = "100%";
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    statusEl.textContent = `❌ Upload failed: ${error.detail || "Unknown error"}`;
+                    statusEl.className = "upload-status error show";
+                    progressBar.classList.remove("active");
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Show success
+                statusEl.innerHTML = `✅ CV uploaded successfully!<br><strong>${data.chunks_stored} chunks created</strong>`;
+                statusEl.className = "upload-status success show";
+                progressBar.classList.remove("active");
+
+                // Clear file input
+                document.getElementById("cv-file-input").value = "";
+            } catch (error) {
+                console.error("Upload error:", error);
+                statusEl.textContent = "❌ Upload failed. Please try again.";
+                statusEl.className = "upload-status error show";
+                progressBar.classList.remove("active");
+            }
+        }
+
+        function setupUploadHandlers() {
+            // Handlers are already set up in the HTML
         }
 
         // ============================================

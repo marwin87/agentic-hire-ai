@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from loguru import logger
 
 from src.agents.agents import get_agent_factory
-from src.api.routes import search, validation, scoring, evaluation, auth
+from src.api.routes import search, validation, scoring, evaluation, auth, cv
 from src.api.dependencies import get_current_user
 from src.config.settings import config
 from src.db import init_db, close_db, User
@@ -127,3 +127,4 @@ app.include_router(search.router)
 app.include_router(validation.router)
 app.include_router(scoring.router)
 app.include_router(evaluation.router)
+app.include_router(cv.router)
