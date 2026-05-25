@@ -106,7 +106,10 @@ async def scout_search(
 
         # Log search session
         await SearchSessionRepository.create(
-            session, user_id=cast(UUID, user.id), criteria=request.criteria, found_count=len(found_jobs)
+            session,
+            user_id=cast(UUID, user.id),
+            criteria=request.criteria,
+            found_count=len(found_jobs),
         )
 
         # Commit database changes
@@ -124,8 +127,12 @@ async def scout_search(
                     "title": job.title if hasattr(job, "title") else "",
                     "company": job.company if hasattr(job, "company") else "",
                     "url": job.url if hasattr(job, "url") else "",
-                    "description": job.description if hasattr(job, "description") else None,
-                    "salary_range": job.salary_range if hasattr(job, "salary_range") else None,
+                    "description": (
+                        job.description if hasattr(job, "description") else None
+                    ),
+                    "salary_range": (
+                        job.salary_range if hasattr(job, "salary_range") else None
+                    ),
                 }
                 for job in found_jobs
             ],
