@@ -110,17 +110,15 @@ jobs:
           POSTGRES_USER: agentic_hire
           POSTGRES_PASSWORD: dev_password
           POSTGRES_DB: agentic_hire
-        run: |
-          docker compose up -d
-          sleep 15
+        run: docker compose up -d --wait --timeout 120
 
       - name: Check if services are healthy
         run: |
           # Check database
           docker compose exec -T db pg_isready -U agentic_hire || exit 1
 
-          # Check API health
-          curl -f http://localhost:8000/health || exit 1
+          # Check API health (api service maps 8001:8000)
+          curl -f http://localhost:8001/health || exit 1
 
       - name: Cleanup
         if: always()
