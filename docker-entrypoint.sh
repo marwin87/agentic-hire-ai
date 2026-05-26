@@ -44,11 +44,8 @@ fi
 echo ""
 echo "=== Service Health Checks ==="
 
-# Check FastAPI
-echo "✓ FastAPI will start on http://0.0.0.0:8000"
-
 # Check OrioSearch connectivity
-ORIO_URL="${AGENTIC_HIRE_ORIOSEARCH_BASE_URL:-http://host.docker.internal:8003}"
+ORIO_URL="${AGENTIC_HIRE_ORIOSEARCH_BASE_URL:-http://host.docker.internal:8000}"
 echo "Checking OrioSearch at $ORIO_URL..."
 if timeout 5 curl -s "$ORIO_URL/health" > /dev/null 2>&1; then
     echo "✓ OrioSearch connectivity check: OK at $ORIO_URL"
@@ -57,6 +54,9 @@ else
     echo "  Job search functionality will be unavailable until OrioSearch is running"
 fi
 
-echo "=== Starting FastAPI Server ==="
+# Check FastAPI
+echo "✓ FastAPI will start on http://0.0.0.0:8001 (accessible on host at http://localhost:8001)"
+
 echo ""
+echo "=== Starting FastAPI Server ==="
 exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000

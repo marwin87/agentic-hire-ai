@@ -3,7 +3,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User, CVFile, CVEmbedding, Job, Evaluation
@@ -98,7 +98,8 @@ class CVEmbeddingRepository:
         if Vector is None:
             return []
 
-        vector_query = Vector(query_embedding)  # type: ignore[operator]
+        # Cast the query embedding to pgvector type for similarity search
+        vector_query = cast(query_embedding, Vector(len(query_embedding)))
 
         result = await session.execute(
             select(CVEmbedding)

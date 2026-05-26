@@ -24,12 +24,13 @@ services:
     restart: unless-stopped
 
   api:
+    container_name: agentic-hire-api
     build:
       context: .
       dockerfile: Dockerfile
     entrypoint: /app/docker-entrypoint.sh
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -43,11 +44,14 @@ services:
       # Required: PostgreSQL connection string
       AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentic_hire}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-agentic_hire}
 
-      # Optional: OrioSearch job discovery service (external, on host machine)
-      AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://host.docker.internal:8003
+      # Optional: OrioSearch job discovery service (external, on host machine on port 8000)
+      AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://host.docker.internal:8000
 
-      # Optional: Logging level (INFO, DEBUG, ERROR)
-      AGENTIC_HIRE_LOG_LEVEL: ${AGENTIC_HIRE_LOG_LEVEL:-INFO}
+      # Optional: Logging level (INFO, DEBUG, ERROR) - set to DEBUG for detailed logging during development
+      AGENTIC_HIRE_LOG_LEVEL: DEBUG
+
+      # Optional: Environment mode (development or production) - development enables auto-reload
+      AGENTIC_HIRE_ENVIRONMENT: ${AGENTIC_HIRE_ENVIRONMENT:-development}
 
     volumes:
       # Bind mount: only source code for live changes (not .venv or docker-entrypoint.sh)
@@ -63,11 +67,13 @@ services:
       # Named volume: ChromaDB vector store (persists across restarts)
       - chroma_db:/app/data/chroma_db
 
-    # Health check for FastAPI + OrioSearch dependency
+    # Health check for FastAPI API only (port 8000 inside container, 8001 on host)
+    # Note: OrioSearch is checked once at startup in docker-entrypoint.sh
+    # This checks that FastAPI itself is responding on /health endpoint
     healthcheck:
-      test: ["CMD", "sh", "-c", "curl -f http://localhost:8000/health && curl -f http://host.docker.internal:8003/health || (echo 'ERROR: OrioSearch not responding at http://host.docker.internal:8003' && exit 1)"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
       start_period: 15s
 

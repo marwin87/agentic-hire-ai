@@ -269,8 +269,8 @@ class CVVectorManager:
         """Retrieve relevant CV chunks from pgvector using semantic search."""
         factory = get_session_factory()
         async with factory() as session:
-            # Generate embedding for query
-            query_embedding = self.embeddings.embed_query(query)
+            # Generate embedding for query (use async method)
+            query_embedding = await self.embeddings.aembed_query(query)
 
             # Search pgvector for similar chunks (cosine distance, user-filtered)
             results = await CVEmbeddingRepository.search_by_user_and_query(

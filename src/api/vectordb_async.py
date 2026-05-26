@@ -1,16 +1,17 @@
 """Async wrapper for CVVectorManager to avoid blocking FastAPI event loop."""
 
-import asyncio
 from typing import Any
+from src.tools.vectordb import CVVectorManager
 
 
 async def get_cv_context_async(
-    vector_manager: Any, query: str = "job matching criteria"
+    vector_manager: CVVectorManager, query: str = "job matching criteria"
 ) -> str:
-    """Retrieve CV context asynchronously to avoid blocking FastAPI event loop.
+    """Retrieve CV context asynchronously without event loop conflicts.
 
-    Wraps the synchronous CVVectorManager.get_context() method using asyncio.to_thread()
-    so it doesn't block the FastAPI async event loop.
+    Directly calls the async get_context_async() method to avoid creating
+    a new event loop via asyncio.Runner(), which causes asyncpg connection
+    pool errors when crossing event loop boundaries.
 
     Args:
         vector_manager: CVVectorManager instance with user_id scoped embeddings
@@ -19,5 +20,4 @@ async def get_cv_context_async(
     Returns:
         CV context string (empty if no embeddings found for user)
     """
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, vector_manager.get_context, query)
+    return await vector_manager.get_context_async(query)

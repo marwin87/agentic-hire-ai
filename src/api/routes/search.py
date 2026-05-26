@@ -50,30 +50,33 @@ async def scout_search(
         # Initialize AgentFactory with user_id for user-scoped embeddings
         if not user.id or not isinstance(user.id, UUID):
             raise HTTPException(status_code=401, detail="Invalid user identity")
+
+        logger.debug(f"[SCOUT] Initializing AgentFactory for user {user.id}")
         factory = AgentFactory(user_id=user.id)
+        logger.debug(f"[SCOUT] AgentFactory initialized successfully")
 
         # Retrieve CV context asynchronously from pgvector
         cv_context = ""
         cv_warning = ""
         try:
+            logger.debug(f"[SCOUT] Retrieving CV context for user {user.id}")
             cv_context = await get_cv_context_async(
                 factory.vector_manager, request.criteria
             )
+            logger.debug(f"[SCOUT] CV context retrieved: {len(cv_context)} characters")
             if not cv_context:
                 cv_warning = "CV not uploaded; results based on criteria only"
                 logger.warning(f"No CV found for user {user.id}")
-        except (ValueError, KeyError) as e:
-            logger.warning(f"CV context format error for user {user.id}: {e}")
-            cv_context = ""
-            cv_warning = "CV context unavailable; results based on criteria only"
         except Exception as e:
             logger.error(
-                f"Unexpected error retrieving CV context for user {user.id}: {e}",
-                exc_info=e,
+                f"CV context retrieval failed for user {user.id}: {type(e).__name__}: {repr(e)}",
+                exc_info=True,
             )
-            raise
+            cv_context = ""
+            cv_warning = "CV context unavailable; results based on criteria only"
 
         # Build state for Scout agent
+        logger.debug("[SCOUT] Building AgenticHireState")
         state: AgenticHireState = {
             "resume_context": cv_context,
             "target_criteria": request.criteria,
@@ -87,6 +90,7 @@ async def scout_search(
             "rejected_jobs": [],
             "seen_jobs": [],
         }
+        logger.debug("[SCOUT] State built successfully")
 
         # Invoke Scout agent with pre-fetched CV context
         logger.info(f"Invoking Scout agent for user {user.email}")
@@ -156,13 +160,16 @@ async def scout_search(
         }
 
     except Exception as e:
-        logger.error(f"Error in scout_search endpoint: {str(e)}", exc_info=e)
+        logger.error("Error in scout_search endpoint", exc_info=True)
         await session.rollback()
 
         # Return graceful error response (200 with empty results + detail)
         detail = "Search failed due to an internal error"
         if config.debug_mode:
-            detail = f"Search failed: {str(e)}"
+            try:
+                detail = f"Search failed: {type(e).__name__}"
+            except Exception:
+                detail = "Search failed: unknown error"
 
         return {
             "search_id": search_id,

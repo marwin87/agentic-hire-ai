@@ -1,7 +1,7 @@
 import asyncio
 import urllib.parse
 from datetime import datetime
-from typing import List, Set, Any, Optional
+from typing import Any, List, Optional, Set, cast
 from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
@@ -138,36 +138,62 @@ class ScoutAgent:
                 break
 
             for tool_call in response.tool_calls:
-                logger.debug(f"[SCOUT] Executing tool: {tool_call['name']}")
+                tool_name: str | None = None
+                tool_id: str | None = None
                 try:
-                    if tool_call["name"] == "job_search_tool":
-                        raw_results = await job_search_tool.ainvoke(tool_call["args"])
+                    if not isinstance(tool_call, dict):
+                        logger.warning(
+                            f"[SCOUT] Unexpected tool_call type: {type(tool_call)}, skipping"
+                        )
+                        continue
+
+                    tool_name = tool_call.get("name")
+                    tool_id = tool_call.get("id")
+                    tool_args_raw = tool_call.get("args")
+
+                    if not all([tool_name, tool_id, tool_args_raw]):
+                        logger.warning(
+                            f"[SCOUT] Incomplete tool_call: name={tool_name}, id={tool_id}, args={tool_args_raw}"
+                        )
+                        continue
+
+                    tool_args = cast(
+                        str | dict[str, Any], tool_args_raw
+                    )  # After validation above
+
+                    logger.debug(f"[SCOUT] Executing tool: {tool_name}")
+
+                    if tool_name == "job_search_tool":
+                        logger.debug(f"[SCOUT] job_search_tool args: {tool_args}")
+                        raw_results = await job_search_tool.ainvoke(tool_args)
                         messages.append(
                             ToolMessage(
                                 name="job_search_tool",
-                                tool_call_id=tool_call["id"],
+                                tool_call_id=cast(str, tool_id),
                                 content=str(raw_results),
                             )
                         )
-                    elif tool_call["name"] == "scrape_webpage_tool":
-                        raw_results = await scrape_webpage_tool.ainvoke(
-                            tool_call["args"]
-                        )
+                    elif tool_name == "scrape_webpage_tool":
+                        logger.debug(f"[SCOUT] scrape_webpage_tool args: {tool_args}")
+                        raw_results = await scrape_webpage_tool.ainvoke(tool_args)
                         messages.append(
                             ToolMessage(
                                 name="scrape_webpage_tool",
-                                tool_call_id=tool_call["id"],
+                                tool_call_id=tool_id,
                                 content=str(raw_results),
                             )
                         )
                     await asyncio.sleep(config.scout_rate_limit_delay)
                 except Exception as e:
-                    logger.error(f"Tool execution failed: {str(e)}")
+                    logger.error(
+                        f"Tool execution failed: {type(e).__name__}: {repr(e)}",
+                        exc_info=True,
+                    )
                     messages.append(
                         ToolMessage(
-                            name=tool_call["name"],
-                            tool_call_id=tool_call["id"],
-                            content=f"Error executing tool: {str(e)}",
+                            name=tool_name or "unknown",
+                            tool_call_id=tool_id or "unknown",
+                            content=f"Error executing tool: {type(e).__name__}",
                         )
                     )
 
@@ -200,7 +226,10 @@ class ScoutAgent:
                 ]
                 logger.debug(f"Parsed {len(all_found_jobs)} jobs from messages.")
             except Exception as e:
-                logger.error(f"Parser failed: {str(e)}. Continuing with empty results.")
+                logger.error(
+                    f"Parser failed: {type(e).__name__}: {repr(e)}. Continuing with empty results.",
+                    exc_info=True,
+                )
                 all_found_jobs = []
 
         # Fallback if no tool calls were made or no jobs found
@@ -210,8 +239,14 @@ class ScoutAgent:
             )
             try:
                 fallback_query = f"{target_criteria} open positions"
+                logger.debug(
+                    f"[SCOUT] Running fallback search with query: {fallback_query}"
+                )
                 await asyncio.sleep(config.scout_rate_limit_delay)
                 raw_results = await job_search_tool.ainvoke({"query": fallback_query})
+                logger.debug(
+                    f"[SCOUT] Fallback search returned {len(str(raw_results))} characters"
+                )
                 parsed_fallback = self.parser.parse(str(raw_results))
                 all_found_jobs = [
                     job
@@ -224,7 +259,10 @@ class ScoutAgent:
                 ]
                 logger.debug(f"Parsed {len(all_found_jobs)} jobs from fallback search.")
             except Exception as e:
-                logger.error(f"Fallback search failed: {str(e)}")
+                logger.error(
+                    f"Fallback search failed: {type(e).__name__}: {repr(e)}",
+                    exc_info=True,
+                )
                 all_found_jobs = []
 
         # Update seen_jobs with newly found jobs (normalized)
