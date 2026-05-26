@@ -314,43 +314,43 @@ This is a refactor, not a backwards-compatible change. The old validation flow (
 
 #### Automated
 
-- [x] 1.1 Create validation reason enum and rejection schemas
-- [x] 1.2 Refactor validation endpoint request/response contracts
-- [x] 1.3 Implement per-job timeout handling with reason code assignment
-- [x] 1.4 Update validation endpoint logging to summary only
-- [x] 1.5 Type checking passes
+- [x] 1.1 Create validation reason enum and rejection schemas — 5c5f582
+- [x] 1.2 Refactor validation endpoint request/response contracts — 5c5f582
+- [x] 1.3 Implement per-job timeout handling with reason code assignment — 5c5f582
+- [x] 1.4 Update validation endpoint logging to summary only — 5c5f582
+- [x] 1.5 Type checking passes — 5c5f582
 
 #### Manual
 
-- [x] 1.6 Endpoint returns correct response for mixed valid/invalid jobs
-- [x] 1.7 Timeout jobs marked with VALIDATION_TIMEOUT code
-- [x] 1.8 Response schema validates against ValidateJobsResponse
+- [x] 1.6 Endpoint returns correct response for mixed valid/invalid jobs — 5c5f582
+- [x] 1.7 Timeout jobs marked with VALIDATION_TIMEOUT code — 5c5f582
+- [x] 1.8 Response schema validates against ValidateJobsResponse — 5c5f582
 
 ### Phase 2: Integration & Testing
 
 #### Automated
 
-- [x] 2.1 Integration tests for all jobs pass scenario
-- [x] 2.2 Integration tests for all jobs fail scenario
-- [x] 2.3 Integration tests for mixed results scenario
-- [x] 2.4 Integration tests for timeout scenario
-- [x] 2.5 Type hints complete, mypy strict passes
-- [x] 2.6 All tests passing
+- [x] 2.1 Integration tests for all jobs pass scenario — 5c5f582
+- [x] 2.2 Integration tests for all jobs fail scenario — 5c5f582
+- [x] 2.3 Integration tests for mixed results scenario — 5c5f582
+- [x] 2.4 Integration tests for timeout scenario — 5c5f582
+- [x] 2.5 Type hints complete, mypy strict passes — 5c5f582
+- [x] 2.6 All tests passing — 5c5f582
 
 #### Manual
 
-- [x] 2.7 Test script simulates Orchestrator calling endpoint
-- [x] 2.8 Slow job scenario verified (timeout handling works)
+- [x] 2.7 Test script simulates Orchestrator calling endpoint — 5c5f582
+- [x] 2.8 Slow job scenario verified (timeout handling works) — 5c5f582
 
 ### Phase 3: Documentation & Verification
 
 #### Automated
 
-- [x] 3.1 OpenAPI/Swagger docs generated correctly
-- [x] 3.2 No new test failures
+- [x] 3.1 OpenAPI/Swagger docs generated correctly — 5c5f582
+- [x] 3.2 No new test failures — 5c5f582
 
 #### Manual
 
-- [x] 3.3 Orchestrator can call endpoint and parse response
-- [x] 3.4 End-to-end flow verified: Scout → Validate → Orchestrator ready
-- [x] 3.5 No regressions in existing features
+- [x] 3.3 Orchestrator can call endpoint and parse response — 5c5f582
+- [x] 3.4 End-to-end flow verified: Scout → Validate → Orchestrator ready — 5c5f582
+- [x] 3.5 No regressions in existing features — 5c5f582
