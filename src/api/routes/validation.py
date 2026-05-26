@@ -1,104 +1,111 @@
 """Validation endpoint - filter invalid and expired jobs."""
 
-from typing import Any
+import asyncio
 
 from fastapi import APIRouter, Depends
 from loguru import logger
 
-from src.api.dependencies import get_factory, get_current_user
+from src.api.dependencies import get_current_user
 from src.api.schemas import ValidateJobsRequest
+from src.agents.agents import get_agent_factory
+from src.config.settings import config
 from src.db import User
-from src.graph import validate_and_limit_jobs_node
-from src.schema.state import AgenticHireState, JobOffer
+from src.schema.state import JobOffer
+from src.schema.validation import (
+    RejectedJob,
+    ValidationFailureReason,
+    ValidateJobsResponse,
+)
 
 router = APIRouter(prefix="/api", tags=["validation"])
 
+# Total per-job timeout: HTTP timeout + buffer for LLM retry loop
+_PER_JOB_TIMEOUT_S: float = config.validator_timeout + 15
 
-@router.post("/validate_jobs")
+
+async def _validate_single_job(
+    job: JobOffer,
+) -> tuple[JobOffer | None, RejectedJob | None]:
+    """Validate one job with a total-per-job timeout.
+
+    Returns (job, None) on success, (None, rejected_job) on failure.
+    asyncio.TimeoutError is caught here and mapped to VALIDATION_TIMEOUT.
+    """
+    factory = get_agent_factory()
+    try:
+        result = await asyncio.wait_for(
+            factory.job_validator.validate_job_with_reason(job),
+            timeout=_PER_JOB_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        return None, RejectedJob(
+            id=job.id,
+            title=job.title,
+            company=job.company,
+            url=job.url,
+            description=job.description,
+            salary_range=job.salary_range,
+            reason_code=ValidationFailureReason.VALIDATION_TIMEOUT,
+            reason_text=f"Validation exceeded total timeout of {_PER_JOB_TIMEOUT_S:.0f}s",
+            validation_duration_ms=int(_PER_JOB_TIMEOUT_S * 1000),
+        )
+
+    if result.is_valid:
+        return job, None
+
+    return None, RejectedJob(
+        id=job.id,
+        title=job.title,
+        company=job.company,
+        url=job.url,
+        description=job.description,
+        salary_range=job.salary_range,
+        reason_code=result.reason_code or ValidationFailureReason.HTTP_ERROR,
+        reason_text=result.reason_text,
+        validation_duration_ms=result.duration_ms,
+    )
+
+
+@router.post("/validate_jobs", response_model=ValidateJobsResponse)
 async def validate_jobs(
     request: ValidateJobsRequest,
     user: User = Depends(get_current_user),
-) -> dict[str, Any]:
-    """Validate and filter jobs - remove dead links and expired postings.
+) -> ValidateJobsResponse:
+    """Validate jobs from Scout — remove dead links and expired postings.
 
-    Takes a list of jobs found by the Scout agent and filters out:
-    - Jobs with invalid URLs
-    - Dead links (HTTP 400+)
-    - Expired/closed job postings
+    Accepts a list of JobOffer objects found by the Scout agent and validates each by:
+    - Checking URL format (rejects URL_INVALID)
+    - Making an HTTP GET request to the job page (rejects HTTP_ERROR on 4xx/5xx)
+    - Using an LLM to detect expired/closed postings (rejects JOB_EXPIRED)
+    - Enforcing a per-job timeout (rejects VALIDATION_TIMEOUT if exceeded)
+
+    Always returns HTTP 200. Rejection reasons are in the `rejected_jobs` list.
+    Partial results are returned if some jobs time out — other jobs still complete.
 
     Args:
-        request: ValidateJobsRequest with list of jobs to validate
+        request: List of jobs to validate (from Scout agent output)
         user: Authenticated user from JWT token
 
     Returns:
-        Dictionary with valid_jobs and rejected_jobs lists
+        ValidateJobsResponse with valid_jobs and rejected_jobs (with reason codes)
     """
     logger.info(
-        f"POST /validate_jobs requested by {user.email} with {len(request.jobs)} jobs"
+        f"POST /validate_jobs — {len(request.jobs)} jobs received from {user.email}"
     )
 
-    try:
-        # Convert request job dicts to JobOffer objects
-        jobs = [
-            JobOffer(**job) if isinstance(job, dict) else job for job in request.jobs
-        ]
+    valid_jobs: list[JobOffer] = []
+    rejected_jobs: list[RejectedJob] = []
 
-        # Build state for validation node
-        state: AgenticHireState = {
-            "found_jobs": jobs,
-            "valid_jobs": [],
-            "rejected_jobs": [],
-            "max_offers": len(jobs),
-            "scout_runs": 0,
-            "status": "Starting validation...",
-            "search_queries": [],
-            "shortlisted_jobs": [],
-            "applications": {},
-            "resume_context": "",
-            "target_criteria": "",
-            "seen_jobs": [],
-        }
+    for job in request.jobs:
+        valid, rejected = await _validate_single_job(job)
+        if valid is not None:
+            valid_jobs.append(valid)
+        elif rejected is not None:
+            rejected_jobs.append(rejected)
 
-        # Invoke validation node
-        logger.debug(f"Invoking validation node with {len(jobs)} jobs")
-        result = await validate_and_limit_jobs_node(state)
+    logger.info(
+        f"Validated {len(request.jobs)} jobs for {user.email}: "
+        f"{len(valid_jobs)} passed, {len(rejected_jobs)} rejected"
+    )
 
-        valid_jobs = result.get("valid_jobs", [])
-        rejected_jobs = result.get("rejected_jobs", [])
-
-        logger.info(
-            f"Validation complete: {len(valid_jobs)} valid, {len(rejected_jobs)} rejected"
-        )
-
-        return {
-            "valid_jobs": [
-                {
-                    "id": job.id if hasattr(job, "id") else "",
-                    "title": job.title if hasattr(job, "title") else "",
-                    "company": job.company if hasattr(job, "company") else "",
-                    "url": job.url if hasattr(job, "url") else "",
-                }
-                for job in valid_jobs
-            ],
-            "rejected_jobs": [
-                {
-                    "id": job.id if hasattr(job, "id") else "",
-                    "title": job.title if hasattr(job, "title") else "",
-                    "company": job.company if hasattr(job, "company") else "",
-                    "url": job.url if hasattr(job, "url") else "",
-                }
-                for job in rejected_jobs
-            ],
-            "status": result.get("status", "Validation complete"),
-        }
-
-    except Exception as e:
-        logger.error(f"Error in validate_jobs endpoint: {str(e)}", exc_info=e)
-        return {
-            "error": "validation_failed",
-            "detail": str(e),
-            "code": "VALIDATION_ERROR",
-            "valid_jobs": [],
-            "rejected_jobs": [],
-            "status": f"Validation failed: {str(e)}",
-        }
+    return ValidateJobsResponse(valid_jobs=valid_jobs, rejected_jobs=rejected_jobs)

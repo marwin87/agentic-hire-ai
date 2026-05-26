@@ -2,7 +2,9 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
+
+from src.schema.state import JobOffer
 
 
 class ErrorResponse(BaseModel):
@@ -35,7 +37,32 @@ class SearchJobsRequest(BaseModel):
 class ValidateJobsRequest(BaseModel):
     """Request body for POST /validate_jobs endpoint."""
 
-    jobs: list[dict[str, Any]] = Field(..., description="List of jobs to validate")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "jobs": [
+                    {
+                        "id": "job-1",
+                        "title": "Python Developer",
+                        "company": "Tech Corp",
+                        "url": "https://example.com/jobs/1",
+                        "description": "Build scalable Python services.",
+                        "salary_range": "$100k",
+                    },
+                    {
+                        "id": "job-2",
+                        "title": "Go Engineer",
+                        "company": "Old Corp",
+                        "url": "https://expired-company.com/jobs/2",
+                    },
+                ]
+            }
+        }
+    )
+
+    jobs: list[JobOffer] = Field(
+        ..., description="List of jobs to validate (from Scout agent)"
+    )
 
 
 class ScoreJobsRequest(BaseModel):

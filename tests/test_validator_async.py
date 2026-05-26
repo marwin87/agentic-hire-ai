@@ -2,8 +2,9 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.tools.job_validator import JobValidator
+from src.tools.job_validator import JobValidator, ExpirationCheck
 from src.schema.state import JobOffer
+from src.schema.validation import ValidationFailureReason
 
 
 @pytest.fixture
@@ -83,3 +84,180 @@ async def test_validator_with_http_error(
 
         result = await validator.is_job_valid(sample_job)
         assert result is False
+
+
+# --- validate_job_with_reason tests ---
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_url_invalid(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """Bad URL returns URL_INVALID reason code."""
+    sample_job.url = "not-a-url"
+    result = await validator.validate_job_with_reason(sample_job)
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.URL_INVALID
+    assert "not-a-url" in result.reason_text
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_na_url(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """N/A URL returns URL_INVALID."""
+    sample_job.url = "N/A"
+    result = await validator.validate_job_with_reason(sample_job)
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.URL_INVALID
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_http_error(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """HTTP 404 returns HTTP_ERROR reason code."""
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.HTTP_ERROR
+    assert "404" in result.reason_text
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_http_500(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """HTTP 500 also returns HTTP_ERROR."""
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.HTTP_ERROR
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_expired(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """LLM says job is closed returns JOB_EXPIRED with LLM reason text."""
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html><body>This position has been filled.</body></html>"
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        validator.checker.ainvoke = AsyncMock(
+            return_value=ExpirationCheck(
+                is_active=False, reason="Position has been filled"
+            )
+        )
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.JOB_EXPIRED
+    assert "filled" in result.reason_text.lower()
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_valid(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """Active job returns is_valid=True with no reason code."""
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html><body>Apply now!</body></html>"
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        validator.checker.ainvoke = AsyncMock(
+            return_value=ExpirationCheck(is_active=True, reason="Job is active")
+        )
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is True
+    assert result.reason_code is None
+    assert result.duration_ms >= 0
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_http_timeout(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """HTTP timeout returns VALIDATION_TIMEOUT reason code."""
+    import httpx
+
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.get.side_effect = httpx.TimeoutException("timed out")
+        mock_client_class.return_value = mock_client
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.VALIDATION_TIMEOUT
+
+
+@pytest.mark.asyncio
+async def test_validate_job_with_reason_network_error(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """HTTP network error (ConnectError) returns HTTP_ERROR."""
+    import httpx
+
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.get.side_effect = httpx.HTTPError("connection refused")
+        mock_client_class.return_value = mock_client
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.HTTP_ERROR
+
+
+@pytest.mark.asyncio
+async def test_is_job_valid_delegates_to_validate_with_reason(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """is_job_valid() is a backward-compat wrapper that returns the bool from validate_job_with_reason."""
+    from src.schema.validation import JobValidationResult
+
+    with patch.object(
+        validator,
+        "validate_job_with_reason",
+        new=AsyncMock(return_value=JobValidationResult(is_valid=True, duration_ms=10)),
+    ):
+        result = await validator.is_job_valid(sample_job)
+    assert result is True
