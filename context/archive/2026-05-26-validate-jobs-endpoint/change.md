@@ -1,10 +1,10 @@
 ---
 change_id: validate-jobs-endpoint
 title: Validate jobs endpoint
-status: impl_reviewed
+status: archived
 created: 2026-05-26
 updated: 2026-05-26
-archived_at: null
+archived_at: 2026-05-26T14:10:41Z
 ---
 
 ## Notes

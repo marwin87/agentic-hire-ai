@@ -3,7 +3,7 @@ project: AgenticHire AI — Production Readiness Refactor
 version: 1
 status: draft
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -37,7 +37,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-02  | `user-login-refresh`       | log in and refresh JWT token                     | F-03, S-01           | FR-002         | done  |
 | S-03  | `user-cv-upload`           | upload CV, trigger embedding, verify storage     | F-01, F-02, F-04     | FR-003, FR-009, FR-013 | done  |
 | S-04  | `scout-api-endpoint`       | invoke job search via FastAPI endpoint           | F-01                 | FR-004, FR-011 | done      |
-| S-05  | `validate-jobs-endpoint`   | invoke job validation via FastAPI endpoint       | F-01                 | FR-006         | proposed  |
+| S-05  | `validate-jobs-endpoint`   | invoke job validation via FastAPI endpoint       | F-01                 | FR-006         | done      |
 | S-06  | `orchestrator-api-endpoint` | invoke job scoring via FastAPI, retrieve CV context | F-01, F-04, S-05   | FR-005, FR-012 | proposed  |
 | S-07  | `tailor-api-endpoint`      | invoke evaluation generation via FastAPI         | F-01, F-04           | FR-014         | proposed  |
 | S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | proposed  |
@@ -200,7 +200,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Validation logic (HTTP checks, LLM expiration detection) is unchanged from prior system. Risk: false negatives (invalid links pass), false positives (valid links rejected). Mitigation: Preserve prior logic (HTTPValidator + ExpirationCheck utility); add regression tests.
-- **Status:** proposed (ready after F-01)
+- **Status:** done
 
 ### S-06: Orchestrator agent invokable via FastAPI
 
@@ -300,3 +300,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-02: log in and refresh JWT token** — Completed 2026-05-25 (included in S-01). Lesson: —.
 - **S-03: upload CV, trigger embedding, verify storage** — Archived 2026-05-25 → `context/archive/2026-05-25-user-cv-upload/`. Lesson: —.
 - **S-04: invoke job search via FastAPI endpoint** — Archived 2026-05-25 → `context/archive/2026-05-25-scout-api-endpoint/`. Lesson: —.
+- **S-05: invoke job validation via FastAPI endpoint** — Archived 2026-05-26 → `context/archive/2026-05-26-validate-jobs-endpoint/`. Lesson: —.
