@@ -1,10 +1,10 @@
 ---
 change_id: orchestrator-api-endpoint
 title: Orchestrator api endpoint
-status: implemented
+status: archived
 created: 2026-05-26
 updated: 2026-05-27
-archived_at: null
+archived_at: 2026-05-27T00:00:00Z
 ---
 
 ## Notes

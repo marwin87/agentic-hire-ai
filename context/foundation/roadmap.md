@@ -3,7 +3,7 @@ project: AgenticHire AI — Production Readiness Refactor
 version: 1
 status: draft
 created: 2026-05-25
-updated: 2026-05-26
+updated: 2026-05-27
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -38,7 +38,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-03  | `user-cv-upload`           | upload CV, trigger embedding, verify storage     | F-01, F-02, F-04     | FR-003, FR-009, FR-013 | done  |
 | S-04  | `scout-api-endpoint`       | invoke job search via FastAPI endpoint           | F-01                 | FR-004, FR-011 | done      |
 | S-05  | `validate-jobs-endpoint`   | invoke job validation via FastAPI endpoint       | F-01                 | FR-006         | done      |
-| S-06  | `orchestrator-api-endpoint` | invoke job scoring via FastAPI, retrieve CV context | F-01, F-04, S-05   | FR-005, FR-012 | proposed  |
+| S-06  | `orchestrator-api-endpoint` | invoke job scoring via FastAPI, retrieve CV context | F-01, F-04, S-05   | FR-005, FR-012 | done  |
 | S-07  | `tailor-api-endpoint`      | invoke evaluation generation via FastAPI         | F-01, F-04           | FR-014         | proposed  |
 | S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | proposed  |
 | S-09  | `user-evaluations`         | retrieve personal evaluation scores               | F-01, F-02           | FR-008         | proposed  |
@@ -212,7 +212,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** RAG context retrieval from pgvector (semantic search) must be fast and accurate. Risk: stale embeddings, poor search results. Mitigation: F-04 includes embedding quality regression test; vector search latency testing.
-- **Status:** proposed (ready after S-05 and F-04)
+- **Status:** done
 
 ### S-07: Tailor agent invokable via FastAPI
 
@@ -301,3 +301,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-03: upload CV, trigger embedding, verify storage** — Archived 2026-05-25 → `context/archive/2026-05-25-user-cv-upload/`. Lesson: —.
 - **S-04: invoke job search via FastAPI endpoint** — Archived 2026-05-25 → `context/archive/2026-05-25-scout-api-endpoint/`. Lesson: —.
 - **S-05: invoke job validation via FastAPI endpoint** — Archived 2026-05-26 → `context/archive/2026-05-26-validate-jobs-endpoint/`. Lesson: —.
+- **S-06: invoke job scoring via FastAPI, retrieve CV context** — Archived 2026-05-27 → `context/archive/2026-05-26-orchestrator-api-endpoint/`. Lesson: —.
