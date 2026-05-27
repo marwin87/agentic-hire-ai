@@ -18,6 +18,7 @@ from src.api.routes import (
     auth,
     cv,
     orchestrate,
+    workflows,
 )
 from src.api.dependencies import get_current_user
 from src.config.settings import config
@@ -137,3 +138,4 @@ app.include_router(scoring.router)
 app.include_router(evaluation.router)
 app.include_router(cv.router)
 app.include_router(orchestrate.router)
+app.include_router(workflows.router)

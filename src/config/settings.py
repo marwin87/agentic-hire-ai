@@ -33,7 +33,7 @@ class AppConfig(BaseSettings):
         3, description="Maximum number of valid job offers to process."
     )
     max_scout_runs: int = Field(
-        5, description="Maximum number of iterations for the job scout agent."
+        3, description="Maximum number of iterations for the job scout agent."
     )
     scout_max_iterations: int = Field(
         3, description="Max LLM interaction iterations per scout run."
