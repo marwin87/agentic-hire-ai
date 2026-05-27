@@ -21,7 +21,7 @@ def mock_llm() -> MagicMock:
 def mock_vector_manager() -> MagicMock:
     """Create a mock CVVectorManager for testing."""
     mock = MagicMock()
-    mock.get_context = MagicMock(return_value="Relevant CV context")
+    mock.get_context_async = AsyncMock(return_value="Relevant CV context")
     return mock
 
 
@@ -92,8 +92,8 @@ async def test_orchestrator_calls_vector_retrieval(
 
     result = await orchestrator(sample_state)
 
-    # Verify vector manager was called (would be wrapped in asyncio.to_thread)
-    assert orchestrator.vector_manager.get_context.called
+    # Verify vector manager was called
+    assert orchestrator.vector_manager.get_context_async.called
 
 
 @pytest.mark.asyncio

@@ -3,3 +3,8 @@
 /data/cv/
 __pycache__/
 /.idea/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
