@@ -148,10 +148,8 @@ async def test_job_repository_count_by_user() -> None:
         for i in range(3)
     ]
 
-    mock_scalars = MagicMock()
-    mock_scalars.all.return_value = jobs
     mock_result = MagicMock()
-    mock_result.scalars.return_value = mock_scalars
+    mock_result.scalar.return_value = 3  # SQL COUNT returns single aggregate value
     session.execute.return_value = mock_result
 
     result = await JobRepository.count_by_user(session, user_id)
