@@ -110,15 +110,15 @@ And: The system parses the CV, generates embeddings, and stores them in pgvector
 
 ### Modified Capabilities
 - **FR-004**: Scout Agent can be invoked via FastAPI endpoint (was: CLI-only or embedded in Streamlit)
-- **FR-005**: Orchestrator can be invoked via FastAPI endpoint (was: CLI-only or embedded in Streamlit)
-- **FR-006**: Validate can be invoked via FastAPI endpoint (was: CLI-only or embedded in Streamlit)
+- **FR-005**: Unified orchestration workflow via FastAPI (was: separate endpoints per agent). Single `/api/workflows/search-jobs` endpoint coordinates full pipeline: Scout (optional, if criteria provided) → Validate → Orchestrator (RAG-based scoring) → Tailor (evaluation) in one request.
+- **FR-006**: Validate can be invoked via FastAPI (now part of unified endpoint, was: CLI-only)
 - **FR-009**: CV embeddings stored in pgvector (was: ChromaDB local instance)
 
 ### Preserved Capabilities
 - **FR-011**: Scout discovers jobs via OrioSearch API (logic unchanged, same connector, same job payload)
-- **FR-012**: Orchestrator scores jobs via OpenRouter (prompts unchanged, same reasoning)
+- **FR-012**: Orchestrator scores jobs via OpenRouter (prompts unchanged, same reasoning, now via unified `/api/workflows/search-jobs`)
 - **FR-013**: Vision pipeline parses CV with same quality (PDF → Images → Vision LLM, same embeddings quality)
-- **FR-014**: Tailor generates evaluation text (reasoning unchanged, now persisted in database)
+- **FR-014**: Tailor generates evaluation text (reasoning unchanged, now persisted in database, part of unified workflow)
 
 ### Removed / Deprecated
 - CLI (main.py) — fully replaced by FastAPI endpoints
@@ -229,12 +229,26 @@ Each sub-phase is testable and delivers working infrastructure. All are mandator
 
 ---
 
+## Architectural Decision: Unified Workflow Endpoint
+
+**Decision (2026-05-27)**: Instead of separate endpoints for Orchestrator (`/api/score_jobs`) and Tailor (`/api/evaluate_job/{job_id}`), implement a single unified `/api/workflows/search-jobs` endpoint that orchestrates the entire pipeline via LangGraph.
+
+**Rationale**:
+- Reduces API surface complexity — clients invoke once, receive complete results
+- Leverages LangGraph as primary orchestrator (not just CLI/Streamlit)
+- Simplifies error handling — per-job error tracking within single response
+- Enables future enhancements (pausable workflows, HITL approval gates) more naturally
+- LangGraph state mutations and conditional logic already proven in CLI/Streamlit
+
+**Impact on FR-005 and FR-014**: Now served by single endpoint `/api/workflows/search-jobs` (POST) which returns `OrchestrateResponse` with all_jobs (with match_scores and analysis), shortlisted_jobs (with evaluations), and rejected_jobs.
+
 ## Notes for Downstream Steps
 
 **Forward to `/10x-tech-stack-selector` or `/10x-stack-assess`** (not in PRD, but relevant to next step):
 
 - FastAPI is the selected backend framework (locked for Phase 1).
 - PostgreSQL + pgvector is the selected database (locked for Phase 1).
+- LangGraph is the primary orchestration layer (locked for Phase 1 via `/api/workflows/search-jobs`).
 - React or Next.js for frontend (open for selection in tech-stack phase).
 - Docker Compose for local orchestration (locked for Phase 1).
 - No cloud hosting; local-only deployment (locked).

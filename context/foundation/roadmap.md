@@ -4,6 +4,7 @@ version: 1
 status: draft
 created: 2026-05-25
 updated: 2026-05-27
+architectural_note: "Graph-Workflow-API (S-06) implements unified orchestration endpoint, replacing initial plan for separate Orchestrator and Tailor endpoints. LangGraph is now the primary API entry point for job search workflows."
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -38,8 +39,8 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-03  | `user-cv-upload`           | upload CV, trigger embedding, verify storage     | F-01, F-02, F-04     | FR-003, FR-009, FR-013 | done  |
 | S-04  | `scout-api-endpoint`       | invoke job search via FastAPI endpoint           | F-01                 | FR-004, FR-011 | done      |
 | S-05  | `validate-jobs-endpoint`   | invoke job validation via FastAPI endpoint       | F-01                 | FR-006         | done      |
-| S-06  | `orchestrator-api-endpoint` | invoke job scoring via FastAPI, retrieve CV context | F-01, F-04, S-05   | FR-005, FR-012 | done  |
-| S-07  | `tailor-api-endpoint`      | invoke evaluation generation via FastAPI         | F-01, F-04           | FR-014         | proposed  |
+| S-06  | `graph-workflow-api`        | unified workflow endpoint: Scout → Validate → Orchestrate → Tailor via LangGraph | F-01, F-04, S-05   | FR-005, FR-012, FR-014 | done  |
+| S-07  | `tailor-api-endpoint`      | ~~invoke evaluation generation via FastAPI~~ (subsumed by S-06 unified workflow) | F-01, F-04           | FR-014         | subsumed  |
 | S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | proposed  |
 | S-09  | `user-evaluations`         | retrieve personal evaluation scores               | F-01, F-02           | FR-008         | proposed  |
 | F-05  | `docker-compose-hardening` | (foundation) full-stack Docker with health checks | F-01, F-02, F-03, F-04 | FR-010         | blocked   |
@@ -202,29 +203,30 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Validation logic (HTTP checks, LLM expiration detection) is unchanged from prior system. Risk: false negatives (invalid links pass), false positives (valid links rejected). Mitigation: Preserve prior logic (HTTPValidator + ExpirationCheck utility); add regression tests.
 - **Status:** done
 
-### S-06: Orchestrator agent invokable via FastAPI
+### S-06: Unified workflow endpoint via LangGraph
 
-- **Outcome:** Endpoint `POST /score_jobs` bound to Orchestrator agent. Agent accepts validated job list, retrieves user's CV context from pgvector (RAG), scores each job 0.0–1.0 on relevance, returns shortlisted jobs (score ≥ 0.6). Scores persisted to user's job table.
-- **Change ID:** `orchestrator-api-endpoint`
-- **PRD refs:** FR-005 (Orchestrator endpoint), FR-012 (OpenRouter scoring preserved)
-- **Prerequisites:** F-01 (API server), F-04 (CV context must be available in pgvector for RAG retrieval), S-05 (validated jobs)
-- **Parallel with:** S-07
-- **Blockers:** —
-- **Unknowns:** —
-- **Risk:** RAG context retrieval from pgvector (semantic search) must be fast and accurate. Risk: stale embeddings, poor search results. Mitigation: F-04 includes embedding quality regression test; vector search latency testing.
-- **Status:** done
-
-### S-07: Tailor agent invokable via FastAPI
-
-- **Outcome:** Endpoint `POST /evaluate_job/{job_id}` bound to Tailor agent. Agent retrieves CV context + job description, generates single-sentence evaluation summary per shortlisted job. Result persisted to user's evaluations table.
-- **Change ID:** `tailor-api-endpoint`
-- **PRD refs:** FR-014 (reasoning unchanged)
-- **Prerequisites:** F-01 (API server), F-04 (CV context for prompt), S-06 (shortlisted jobs from orchestrator)
+- **Outcome:** Endpoint `POST /api/workflows/search-jobs` invokes LangGraph as master orchestrator. Accepts search criteria or pre-found jobs; executes Scout (optional) → Validate → Orchestrator (RAG-based scoring) → Tailor (evaluation) in one unified call. Returns all jobs with scores, shortlisted jobs with evaluations, rejected jobs with reasons. Orchestrator logs all decisions with [ORCHESTRATOR] prefix for transparency.
+- **Change ID:** `graph-workflow-api`
+- **PRD refs:** FR-005 (unified orchestration), FR-012 (OpenRouter scoring preserved), FR-014 (evaluation generation)
+- **Prerequisites:** F-01 (API server), F-04 (CV context in pgvector for RAG), S-05 (validation logic available)
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Agent reasoning is unchanged; risk is in API binding and state persistence.
-- **Status:** proposed (ready after S-06)
+- **Risk:** Unified endpoint coordinates multiple agents in sequence; risk: timeout on long pipelines, partial failure handling. Mitigation: per-job error tracking; graceful degradation (missing CV, individual job failures don't block other jobs).
+- **Status:** done (Implemented in change `graph-workflow-api` with Phases 1–3 complete: logging, endpoint, tests)
+- **Implementation notes**: Replaces prior plan for separate `/api/score_jobs` and `/api/evaluate_job/{job_id}` endpoints. LangGraph becomes the primary API orchestrator, not just CLI/Streamlit. Endpoint handles state initialization, CV context retrieval, graph invocation with async/await, and comprehensive error handling with per-job tracking.
+
+### S-07: Tailor agent invokable via FastAPI
+
+- **Outcome:** ~~Endpoint `POST /evaluate_job/{job_id}` bound to Tailor agent~~ **SUBSUMED by S-06** — Tailor agent is now invoked as the final step of the unified `/api/workflows/search-jobs` workflow. Retrieves CV context + job description, generates single-sentence evaluation summary per shortlisted job (score ≥ 0.6). Evaluation included in the unified response.
+- **Change ID:** `tailor-api-endpoint` (consolidated into `graph-workflow-api` S-06)
+- **PRD refs:** FR-014 (reasoning unchanged, now part of unified workflow)
+- **Prerequisites:** F-01 (API server), F-04 (CV context), S-06 (unified workflow)
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Tailor agent reasoning unchanged; risk mitigated by unified workflow error handling.
+- **Status:** subsumed (Tailor is now part of S-06 unified workflow. No separate endpoint needed; clients call `/api/workflows/search-jobs` once to get complete results including evaluations.)
 
 ### S-08: User can retrieve personal job list
 
@@ -301,4 +303,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-03: upload CV, trigger embedding, verify storage** — Archived 2026-05-25 → `context/archive/2026-05-25-user-cv-upload/`. Lesson: —.
 - **S-04: invoke job search via FastAPI endpoint** — Archived 2026-05-25 → `context/archive/2026-05-25-scout-api-endpoint/`. Lesson: —.
 - **S-05: invoke job validation via FastAPI endpoint** — Archived 2026-05-26 → `context/archive/2026-05-26-validate-jobs-endpoint/`. Lesson: —.
-- **S-06: invoke job scoring via FastAPI, retrieve CV context** — Archived 2026-05-27 → `context/archive/2026-05-26-orchestrator-api-endpoint/`. Lesson: —.
+- **S-06: unified workflow endpoint via LangGraph** — Implemented 2026-05-27 in change `graph-workflow-api` (supersedes earlier `orchestrator-api-endpoint` plan). Endpoint `/api/workflows/search-jobs` unifies Scout → Validate → Orchestrate → Tailor pipeline with [ORCHESTRATOR] logging and per-job error handling. S-07 (tailor) now subsumed. Lesson: LangGraph as primary API orchestrator proves superior to separate agent endpoints; consolidation reduces API surface and simplifies client integration.

@@ -175,9 +175,11 @@ The scoring algorithm (0.0–1.0 relevance) and agent reasoning remain unchanged
 
 **Preserved:**
 - Scout agent connection to OrioSearch API (same payload, new destination: Postgres)
-- OpenRouter LLM gateway (same models, same prompts)
+- OpenRouter LLM gateway (same models, same prompts, accessed via unified LangGraph workflow)
 - Vision LLM CV parsing logic (same PDF handling, same embeddings quality)
-- Tailor agent evaluation reasoning (same prompts, now database-backed)
+- Tailor agent evaluation reasoning (same prompts, now database-backed, part of unified workflow)
+
+**Architectural Enhancement (2026-05-27)**: LangGraph becomes the primary orchestration API via unified `/api/workflows/search-jobs` endpoint, replacing the initial plan for separate agent endpoints. This simplifies the API surface while maintaining agent logic fidelity.
 
 **Data migration**: Fresh start (no data import from old system).
 
