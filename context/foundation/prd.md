@@ -242,6 +242,13 @@ Each sub-phase is testable and delivers working infrastructure. All are mandator
 
 **Impact on FR-005 and FR-014**: Now served by single endpoint `/api/workflows/search-jobs` (POST) which returns `OrchestrateResponse` with all_jobs (with match_scores and analysis), shortlisted_jobs (with evaluations), and rejected_jobs.
 
+**Implementation Cleanup (2026-05-27)**: Removed intermediate/dead endpoints that were superseded by the unified workflow:
+- Removed `POST /api/score_jobs` (individual job scoring endpoint)
+- Removed `POST /api/evaluate_job/{job_id}` (individual evaluation endpoint)
+- Removed `POST /api/orchestrate` (separate orchestration endpoint)
+- Removed corresponding test cases for dead endpoints
+- All functionality preserved in unified `/api/workflows/search-jobs` endpoint; API surface simplified from 5 job-related endpoints to 2 (scout + unified workflow)
+
 ## Notes for Downstream Steps
 
 **Forward to `/10x-tech-stack-selector` or `/10x-stack-assess`** (not in PRD, but relevant to next step):

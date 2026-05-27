@@ -13,11 +13,8 @@ from src.agents.agents import get_agent_factory
 from src.api.routes import (
     search,
     validation,
-    scoring,
-    evaluation,
     auth,
     cv,
-    orchestrate,
     workflows,
 )
 from src.api.dependencies import get_current_user
@@ -134,8 +131,5 @@ async def get_dashboard(user: User = Depends(get_current_user)) -> dict[str, Any
 app.include_router(auth.router)
 app.include_router(search.router)
 app.include_router(validation.router)
-app.include_router(scoring.router)
-app.include_router(evaluation.router)
 app.include_router(cv.router)
-app.include_router(orchestrate.router)
 app.include_router(workflows.router)

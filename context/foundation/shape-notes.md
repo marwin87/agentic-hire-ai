@@ -181,6 +181,8 @@ The scoring algorithm (0.0–1.0 relevance) and agent reasoning remain unchanged
 
 **Architectural Enhancement (2026-05-27)**: LangGraph becomes the primary orchestration API via unified `/api/workflows/search-jobs` endpoint, replacing the initial plan for separate agent endpoints. This simplifies the API surface while maintaining agent logic fidelity.
 
+**Implementation Cleanup (2026-05-27)**: Intermediate endpoints (`POST /api/score_jobs`, `POST /api/evaluate_job/{job_id}`, `POST /api/orchestrate`) superseded by unified workflow have been removed. All functionality preserved; API surface simplified to Scout + unified workflow endpoints. See `CLEANUP_SUMMARY.md` for details.
+
 **Data migration**: Fresh start (no data import from old system).
 
 ---
