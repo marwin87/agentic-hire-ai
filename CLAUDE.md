@@ -300,6 +300,24 @@ API keys for LangFuse already in `.env` (LANGFUSE_*). Hook into LangChain callba
 uv run black src/ tests/ main.py ui.py
 ```
 
+## Git Workflow
+
+**Commit Protocol**: When making code changes, always stage files with `git add` but **do NOT auto-commit**. Instead:
+
+1. Stage changes: `git add <files>`
+2. Show the user:
+   ```
+   Changes are ready to commit:
+   Commit message: <proposed-message>
+   ```
+3. Wait for user approval before running `git commit`
+
+This gives you control over what gets committed and the final commit message. Only commit if you explicitly approve or say "go ahead and commit".
+
+**Rationale**: Auto-committing can bundle unrelated changes or use suboptimal messages. You own the git history.
+
+**Exception**: Skip this if you explicitly say "commit as is" or "go ahead and commit" in your message.
+
 ## Notes for Future Development
 
 - **CV Ingestion is slow** (Vision LLM on all PDF pages): Consider caching more aggressively or lazy-loading embeddings
