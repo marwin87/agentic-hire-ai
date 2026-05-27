@@ -40,7 +40,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-05  | `validate-jobs-endpoint`   | invoke job validation via FastAPI endpoint       | F-01                 | FR-006         | done      |
 | S-06  | `graph-workflow-api`        | unified workflow endpoint: Scout → Validate → Orchestrate → Tailor via LangGraph | F-01, F-04, S-05   | FR-005, FR-012, FR-014 | done  |
 | S-07  | `tailor-api-endpoint`      | ~~invoke evaluation generation via FastAPI~~ (subsumed by S-06 unified workflow) | F-01, F-04           | FR-014         | subsumed  |
-| S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | proposed  |
+| S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | done      |
 | S-09  | `user-evaluations`         | retrieve personal evaluation scores               | F-01, F-02           | FR-008         | proposed  |
 | F-05  | `docker-compose-hardening` | (foundation) full-stack Docker with health checks | F-01, F-02, F-03, F-04 | FR-010         | blocked   |
 
@@ -237,7 +237,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Database query performance for large job lists. Risk: N+1 queries, slow pagination. Mitigation: indexed queries on user_id; limit default page size.
-- **Status:** proposed (ready after F-02)
+- **Status:** done
 
 ### S-09: User can retrieve personal evaluation scores
 
@@ -303,3 +303,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-04: invoke job search via FastAPI endpoint** — Archived 2026-05-25 → `context/archive/2026-05-25-scout-api-endpoint/`. Lesson: —.
 - **S-05: invoke job validation via FastAPI endpoint** — Archived 2026-05-26 → `context/archive/2026-05-26-validate-jobs-endpoint/`. Lesson: —.
 - **S-06: unified workflow endpoint via LangGraph** — Archived 2026-05-27 → `context/archive/2026-05-27-graph-workflow-api/`. Endpoint `/api/workflows/search-jobs` unifies Scout → Validate → Orchestrate → Tailor pipeline with [ORCHESTRATOR] logging and per-job error handling. S-07 (tailor) subsumed. Dead endpoints (POST `/api/score_jobs`, POST `/api/evaluate_job/{job_id}`, POST `/api/orchestrate`) removed 2026-05-27 as superseded by unified workflow. Lesson: LangGraph as primary API orchestrator proves superior to separate agent endpoints; consolidation reduces API surface and simplifies client integration.
+- **S-08: retrieve personal job list (user-filtered)** — Archived 2026-05-27 → `context/archive/2026-05-27-user-job-list/`. GET /api/jobs endpoint with pagination, optional match scores, and multi-user isolation. Lesson: —.
