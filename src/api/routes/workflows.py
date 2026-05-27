@@ -1,0 +1,228 @@
+"""Workflow endpoints - primary orchestration API."""
+
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.agents.agents import AgentFactory
+from src.api.dependencies import get_current_user, get_db
+from src.api.schemas import (
+    OrchestrateRequest,
+    OrchestrateResponse,
+    OrchestrateJobResult,
+)
+from src.api.vectordb_async import get_cv_context_async
+from src.db import User
+from src.graph import build_graph
+from src.schema.state import AgenticHireState
+
+router = APIRouter(prefix="/api", tags=["workflows"])
+
+
+@router.post("/workflows/search-jobs")
+async def search_jobs_workflow(
+    request: OrchestrateRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> OrchestrateResponse:
+    """Orchestrate job search, validation, scoring, and evaluation via LangGraph.
+
+    Accepts either search criteria (triggers Scout) or pre-found jobs (skips Scout).
+    Returns all jobs with match scores, shortlisted jobs with evaluations, and rejected jobs.
+
+    Args:
+        request: OrchestrateRequest with criteria and/or jobs list
+        user: Authenticated user from JWT
+        session: Database session for persistence
+
+    Returns:
+        OrchestrateResponse with all_jobs, shortlisted_jobs, rejected_jobs
+    """
+    logger.info(
+        f"POST /workflows/search-jobs requested by {user.email} with "
+        f"criteria={'yes' if request.criteria else 'no'}, "
+        f"jobs={len(request.jobs) if request.jobs else 0}"
+    )
+
+    # Validate input
+    if not request.criteria and not request.jobs:
+        logger.warning("Workflow called with neither criteria nor jobs")
+        return OrchestrateResponse(
+            all_jobs=[],
+            shortlisted_jobs=[],
+            rejected_jobs=[],
+            status="Error: provide either criteria or jobs",
+            error_count=1,
+        )
+
+    try:
+        # Validate user identity
+        if not user.id or not isinstance(user.id, UUID):
+            logger.error(f"Invalid user identity for {user.email}")
+            raise HTTPException(status_code=401, detail="Invalid user identity")
+
+        # Initialize factory with user_id for user-scoped CV context
+        logger.debug(f"Initializing AgentFactory for user {user.id}")
+        factory = AgentFactory(user_id=user.id)
+
+        # Retrieve CV context from pgvector
+        cv_context = ""
+        try:
+            logger.debug(f"Retrieving CV context for user {user.id}")
+            query = request.criteria if request.criteria else "job requirements"
+            cv_context = await get_cv_context_async(factory.vector_manager, query)
+            logger.debug(f"CV context retrieved: {len(cv_context)} characters")
+        except KeyError:
+            logger.warning(f"CV not found for user {user.id}")
+            cv_context = ""
+        except Exception as e:
+            logger.error(
+                f"CV context retrieval failed: {type(e).__name__}: {repr(e)}",
+                exc_info=True,
+            )
+            cv_context = ""
+
+        # Initialize state
+        state: AgenticHireState = {
+            "resume_context": cv_context,
+            "target_criteria": request.criteria or "",
+            "found_jobs": [],
+            "valid_jobs": [],
+            "shortlisted_jobs": [],
+            "rejected_jobs": [],
+            "applications": {},
+            "status": "Starting orchestration...",
+            "max_offers": len(request.jobs) if request.jobs else 10,
+            "scout_runs": 0,
+            "search_queries": [],
+            "seen_jobs": [],
+        }
+
+        # Determine workflow: use provided jobs or run graph
+        if request.jobs:
+            logger.info(
+                f"Using {len(request.jobs)} provided jobs, invoking graph starting at orchestrator"
+            )
+            state["valid_jobs"] = request.jobs
+        elif request.criteria:
+            logger.info(f"Running graph with criteria: {request.criteria}")
+            state["target_criteria"] = request.criteria
+        else:
+            # Should not reach here due to initial validation
+            return OrchestrateResponse(
+                all_jobs=[],
+                shortlisted_jobs=[],
+                rejected_jobs=[],
+                status="No input provided",
+                error_count=1,
+            )
+
+        # Invoke the graph
+        try:
+            logger.info("[ORCHESTRATOR] Invoking LangGraph workflow")
+            graph = build_graph()
+            result = await graph.ainvoke(state)
+            logger.info("[ORCHESTRATOR] Graph execution complete")
+        except Exception as e:
+            logger.error(
+                f"Graph execution failed: {type(e).__name__}: {repr(e)}",
+                exc_info=True,
+            )
+            return OrchestrateResponse(
+                all_jobs=[],
+                shortlisted_jobs=[],
+                rejected_jobs=[],
+                status=f"Graph execution failed: {str(e)}",
+                error_count=1,
+            )
+
+        # Extract results from graph state
+        shortlisted_jobs = result.get("shortlisted_jobs", [])
+        rejected_jobs = result.get("rejected_jobs", [])
+        all_jobs = result.get("valid_jobs", [])
+        applications = result.get("applications", {})
+
+        logger.info(
+            f"Graph results: {len(shortlisted_jobs)} shortlisted, {len(rejected_jobs)} rejected"
+        )
+
+        # Build response: aggregate all jobs with results
+        all_job_results = []
+        shortlisted_results = []
+
+        # Process shortlisted jobs (should have evaluations from tailor)
+        for job in shortlisted_jobs:
+            evaluation_data = applications.get(job.id, {})
+            evaluation = evaluation_data.get("founded_job_offer", "")
+
+            job_result = OrchestrateJobResult(
+                id=job.id,
+                title=job.title,
+                company=job.company,
+                url=job.url,
+                match_score=job.match_score,
+                analysis=job.analysis,
+                evaluation=evaluation,
+                error=None,
+            )
+            all_job_results.append(job_result)
+            shortlisted_results.append(job_result)
+
+        # Process rejected jobs (below threshold)
+        for job in rejected_jobs:
+            job_result = OrchestrateJobResult(
+                id=job.id,
+                title=job.title,
+                company=job.company,
+                url=job.url,
+                match_score=job.match_score if hasattr(job, "match_score") else 0.0,
+                analysis=job.analysis if hasattr(job, "analysis") else None,
+                evaluation=None,
+                error=None,
+            )
+            all_job_results.append(job_result)
+
+        # Filter shortlisted by score threshold
+        final_shortlisted = [
+            job
+            for job in shortlisted_results
+            if job.match_score >= request.score_threshold
+        ]
+
+        # Filter rejected: below threshold
+        final_rejected = [
+            job for job in all_job_results if job.match_score < request.score_threshold
+        ]
+
+        status = (
+            f"Workflow complete: {len(final_shortlisted)} shortlisted, "
+            f"{len(final_rejected)} below threshold"
+        )
+        logger.info(status)
+
+        return OrchestrateResponse(
+            all_jobs=all_job_results,
+            shortlisted_jobs=final_shortlisted,
+            rejected_jobs=final_rejected,
+            status=status,
+            error_count=0,
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(
+            f"Unexpected error in workflow: {type(e).__name__}: {repr(e)}",
+            exc_info=True,
+        )
+        return OrchestrateResponse(
+            all_jobs=[],
+            shortlisted_jobs=[],
+            rejected_jobs=[],
+            status=f"Workflow failed: {str(e)}",
+            error_count=1,
+        )
