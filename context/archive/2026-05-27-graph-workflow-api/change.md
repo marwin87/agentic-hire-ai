@@ -1,10 +1,10 @@
 ---
 change_id: graph-workflow-api
 title: Integrate LangGraph as master orchestrator for search-jobs workflow
-status: impl_reviewed
+status: archived
 created: 2026-05-27
 updated: 2026-05-27
-archived_at: null
+archived_at: 2026-05-27T00:00:00Z
 ---
 
 ## Notes

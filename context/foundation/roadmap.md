@@ -4,7 +4,6 @@ version: 1
 status: draft
 created: 2026-05-25
 updated: 2026-05-27
-architectural_note: "Graph-Workflow-API (S-06) implements unified orchestration endpoint, replacing initial plan for separate Orchestrator and Tailor endpoints. LangGraph is now the primary API entry point for job search workflows."
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -303,4 +302,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-03: upload CV, trigger embedding, verify storage** — Archived 2026-05-25 → `context/archive/2026-05-25-user-cv-upload/`. Lesson: —.
 - **S-04: invoke job search via FastAPI endpoint** — Archived 2026-05-25 → `context/archive/2026-05-25-scout-api-endpoint/`. Lesson: —.
 - **S-05: invoke job validation via FastAPI endpoint** — Archived 2026-05-26 → `context/archive/2026-05-26-validate-jobs-endpoint/`. Lesson: —.
-- **S-06: unified workflow endpoint via LangGraph** — Implemented 2026-05-27 in change `graph-workflow-api` (supersedes earlier `orchestrator-api-endpoint` plan). Endpoint `/api/workflows/search-jobs` unifies Scout → Validate → Orchestrate → Tailor pipeline with [ORCHESTRATOR] logging and per-job error handling. S-07 (tailor) now subsumed. Lesson: LangGraph as primary API orchestrator proves superior to separate agent endpoints; consolidation reduces API surface and simplifies client integration.
+- **S-06: unified workflow endpoint via LangGraph** — Archived 2026-05-27 → `context/archive/2026-05-27-graph-workflow-api/`. Endpoint `/api/workflows/search-jobs` unifies Scout → Validate → Orchestrate → Tailor pipeline with [ORCHESTRATOR] logging and per-job error handling. S-07 (tailor) subsumed. Lesson: LangGraph as primary API orchestrator proves superior to separate agent endpoints; consolidation reduces API surface and simplifies client integration.
