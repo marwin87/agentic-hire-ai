@@ -94,6 +94,14 @@ When processing multiple jobs (scout finds many), if one job fails orchestration
 3. Continue with remaining jobs
 4. Return overall status indicating some jobs had errors
 
+**Job validation**:
+Validation happens after Scout when criteria are provided. Each job is validated asynchronously with a per-job timeout (config.validator_timeout + 15s). Validation checks:
+- URL validity and format
+- HTTP GET response (rejects 4xx/5xx)
+- LLM detection of expired/closed postings
+- Per-job timeout enforcement
+Rejected jobs appear in final_rejected list with error reason from validator.
+
 **Error codes to define**:
 - `ORCHESTRATE_TIMEOUT` — orchestrator exceeded time limit
 - `ORCHESTRATE_NO_CV` — user has no CV in pgvector
@@ -165,8 +173,9 @@ async def orchestrate(
    - Invoke `factory.scout(state)` with user's CV context
    - Extract found_jobs from result
 6. **Run validator** (if found_jobs exists):
-   - Call validate_and_limit_jobs_node (from graph validation pattern) or inline validation
-   - Extract valid_jobs from result
+   - Call per-job validation via `_validate_single_job()` helper
+   - Check for dead links, expired postings, validation timeouts
+   - Extract valid_jobs from result, track rejected_jobs from validation
 7. **Run orchestrator**:
    - Invoke `factory.orchestrator(state)` with valid_jobs and resume_context populated
    - Extract shortlisted_jobs (score >= 0.6) from result
@@ -271,18 +280,18 @@ No database schema changes. No data migration needed. The endpoint uses existing
 
 #### Automated
 
-- [x] 1.1 Type checking passes: mypy src/api/routes/orchestrate.py
-- [x] 1.2 Schemas validate: OrchestrateRequest and OrchestrateResponse are valid Pydantic models
-- [x] 1.3 Route registration succeeds: src/api/main.py imports and includes orchestrate router
-- [x] 1.4 Linting passes: black and flake8
-- [x] 1.5 Existing tests still pass: pytest tests/
+- [x] 1.1 Type checking passes: mypy src/api/routes/orchestrate.py — 3b2bece
+- [x] 1.2 Schemas validate: OrchestrateRequest and OrchestrateResponse are valid Pydantic models — 3b2bece
+- [x] 1.3 Route registration succeeds: src/api/main.py imports and includes orchestrate router — 3b2bece
+- [x] 1.4 Linting passes: black and flake8 — 3b2bece
+- [x] 1.5 Existing tests still pass: pytest tests/ — 3b2bece
 
 #### Manual
 
-- [ ] 1.6 Endpoint callable via curl with JWT auth
-- [ ] 1.7 Endpoint accepts criteria-only and runs full workflow
-- [ ] 1.8 Endpoint accepts jobs-only and skips scout/validate
-- [ ] 1.9 Returned jobs include match_score and analysis
-- [ ] 1.10 Shortlisted jobs include evaluation text from Tailor
-- [ ] 1.11 Error handling works: partial success when one job fails
-- [ ] 1.12 CV context properly retrieved and used in orchestration
+- [x] 1.6 Endpoint callable via curl with JWT auth — 3b2bece
+- [x] 1.7 Endpoint accepts criteria-only and runs full workflow — 3b2bece
+- [x] 1.8 Endpoint accepts jobs-only and skips scout/validate — 3b2bece
+- [x] 1.9 Returned jobs include match_score and analysis — 3b2bece
+- [x] 1.10 Shortlisted jobs include evaluation text from Tailor — 3b2bece
+- [x] 1.11 Error handling works: partial success when one job fails — 3b2bece
+- [x] 1.12 CV context properly retrieved and used in orchestration — 3b2bece

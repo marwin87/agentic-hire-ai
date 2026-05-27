@@ -43,7 +43,9 @@ class JobValidator:
             return int(time.monotonic() * 1000) - start_ms
 
         if not job.url or job.url == "N/A" or not job.url.startswith("http"):
-            logger.warning(f"Invalid URL format for job '{job.title}': {job.url}")
+            logger.warning(
+                f"[JOB_VALIDATOR] Invalid URL format for job '{job.title}': {job.url}"
+            )
             return JobValidationResult(
                 is_valid=False,
                 reason_code=ValidationFailureReason.URL_INVALID,
@@ -53,7 +55,7 @@ class JobValidator:
 
         if config.validator_cache_enabled and job.url in self.validation_cache:
             cached = self.validation_cache[job.url]
-            logger.debug(f"Cache hit for {job.url}: {cached}")
+            logger.debug(f"[JOB_VALIDATOR] Cache hit for {job.url}: {cached}")
             if cached:
                 return JobValidationResult(is_valid=True, duration_ms=elapsed_ms())
             return JobValidationResult(
@@ -64,7 +66,9 @@ class JobValidator:
             )
 
         try:
-            logger.info(f"Validating job '{job.title}' at URL: {job.url}")
+            logger.info(
+                f"[JOB_VALIDATOR] Validating job '{job.title}' at URL: {job.url}"
+            )
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
@@ -74,7 +78,7 @@ class JobValidator:
 
             if response.status_code >= 400:
                 logger.warning(
-                    f"HTTP Error {response.status_code} when accessing {job.url}"
+                    f"[JOB_VALIDATOR] HTTP Error {response.status_code} when accessing {job.url}"
                 )
                 if config.validator_cache_enabled:
                     self.validation_cache[job.url] = False
@@ -100,7 +104,7 @@ class JobValidator:
                     else "LLM could not determine posting status"
                 )
                 logger.info(
-                    f"Job '{job.title}' is expired/inactive. Reason: {reason_text}"
+                    f"[JOB_VALIDATOR] Job '{job.title}' is expired/inactive. Reason: {reason_text}"
                 )
                 if config.validator_cache_enabled:
                     self.validation_cache[job.url] = False
@@ -111,13 +115,15 @@ class JobValidator:
                     duration_ms=elapsed_ms(),
                 )
 
-            logger.info(f"Job '{job.title}' is active.")
+            logger.info(f"[JOB_VALIDATOR] Job '{job.title}' is active.")
             if config.validator_cache_enabled:
                 self.validation_cache[job.url] = True
             return JobValidationResult(is_valid=True, duration_ms=elapsed_ms())
 
         except httpx.TimeoutException:
-            logger.error(f"Timeout ({config.validator_timeout}s) for {job.url}")
+            logger.error(
+                f"[JOB_VALIDATOR] Timeout ({config.validator_timeout}s) for {job.url}"
+            )
             if config.validator_cache_enabled:
                 self.validation_cache[job.url] = False
             return JobValidationResult(
@@ -127,7 +133,7 @@ class JobValidator:
                 duration_ms=elapsed_ms(),
             )
         except httpx.HTTPError as e:
-            logger.error(f"Request failed for {job.url}: {str(e)}")
+            logger.error(f"[JOB_VALIDATOR] Request failed for {job.url}: {str(e)}")
             if config.validator_cache_enabled:
                 self.validation_cache[job.url] = False
             return JobValidationResult(
@@ -145,7 +151,7 @@ class JobValidator:
             result = await self.validate_job_with_reason(job)
             return result.is_valid
         except Exception as e:
-            logger.error(f"Validation error for {job.url}: {str(e)}")
+            logger.error(f"[JOB_VALIDATOR] Validation error for {job.url}: {str(e)}")
             return False
 
     async def _invoke_llm_with_retry(
@@ -164,18 +170,20 @@ class JobValidator:
         for attempt in range(config.validator_max_retries):
             try:
                 logger.debug(
-                    f"LLM expiration check for '{job_title}' (attempt {attempt + 1})"
+                    f"[JOB_VALIDATOR] LLM expiration check for '{job_title}' (attempt {attempt + 1})"
                 )
                 result: ExpirationCheck = await self.checker.ainvoke(prompt)
                 return result
             except Exception as e:
                 if attempt < config.validator_max_retries - 1:
                     backoff = 2**attempt
-                    logger.warning(f"LLM call failed, retrying in {backoff}s: {str(e)}")
+                    logger.warning(
+                        f"[JOB_VALIDATOR] LLM call failed, retrying in {backoff}s: {str(e)}"
+                    )
                     await asyncio.sleep(backoff)
                 else:
                     logger.error(
-                        f"LLM call failed after {config.validator_max_retries} attempts: {str(e)}"
+                        f"[JOB_VALIDATOR] LLM call failed after {config.validator_max_retries} attempts: {str(e)}"
                     )
                     return None
         return None

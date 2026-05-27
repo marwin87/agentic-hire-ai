@@ -25,6 +25,7 @@ from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
 from src.db.repositories import CVEmbeddingRepository, CVFileRepository
 from src.db.models import CVEmbedding
@@ -90,7 +91,7 @@ class CVVectorManager:
 
     def _process_single_page(self, page_data: tuple) -> str:
         i, b64_img, total = page_data
-        print(f"Processing page {i + 1}/{total}")
+        logger.debug(f"[VECTOR_DB] Processing page {i + 1}/{total}")
 
         system_msg = SystemMessage(
             content="You are an expert recruitment assistant specializing in CV transcription."
@@ -138,14 +139,14 @@ class CVVectorManager:
 
         # Check if file hash is cached and embeddings exist in pgvector
         if os.path.exists(self.cv_text_cache_path):
-            print(
-                "✅ CV unchanged. Re-embedding from text cache (skipping Vision LLM)..."
+            logger.info(
+                "[VECTOR_DB] CV unchanged. Re-embedding from text cache (skipping Vision LLM)..."
             )
             with open(self.cv_text_cache_path, "r") as f:
                 full_text = f.read()
-            print(f"✅ Text loaded from cache ({len(full_text)} chars)")
+            logger.info(f"[VECTOR_DB] Text loaded from cache ({len(full_text)} chars)")
         else:
-            print("👁️ Reading CV via Vision model...")
+            logger.info("[VECTOR_DB] Reading CV via Vision model...")
             base64_images = self._pdf_to_base64_images(file_path)
             page_data = [
                 (i, img, len(base64_images)) for i, img in enumerate(base64_images)
@@ -162,7 +163,7 @@ class CVVectorManager:
             with open(self.cv_text_cache_path, "w") as f:
                 f.write(full_text)
 
-            print(f"✅ Text reconstructed ({len(full_text)} chars)")
+            logger.info(f"[VECTOR_DB] Text reconstructed ({len(full_text)} chars)")
 
         # --- Markdown Header Split ---
         headers_to_split_on = [
@@ -254,7 +255,9 @@ class CVVectorManager:
             await CVEmbeddingRepository.bulk_insert(session, embeddings_list)
             await session.commit()
 
-        print(f"✅ Stored {len(final_chunks)} structured chunks in pgvector.")
+        logger.info(
+            f"[VECTOR_DB] Stored {len(final_chunks)} structured chunks in pgvector."
+        )
         return {
             "status": "success",
             "chunks_stored": len(final_chunks),

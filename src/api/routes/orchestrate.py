@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.agents import AgentFactory
+from src.agents.agents import AgentFactory, get_agent_factory
 from src.api.dependencies import get_current_user, get_db
 from src.api.schemas import (
     OrchestrateRequest,
@@ -16,10 +16,48 @@ from src.api.schemas import (
     OrchestrateJobResult,
 )
 from src.api.vectordb_async import get_cv_context_async
+from src.config.settings import config
 from src.db import User
 from src.schema.state import AgenticHireState, JobOffer
+from src.schema.validation import ValidationFailureReason, RejectedJob
 
 router = APIRouter(prefix="/api", tags=["orchestration"])
+
+# Per-job validation timeout
+_PER_JOB_VALIDATION_TIMEOUT_S: float = config.validator_timeout + 15
+
+
+async def _validate_single_job(
+    job: JobOffer,
+) -> tuple[JobOffer | None, dict[str, Any] | None]:
+    """Validate one job with timeout. Returns (job, None) on success or (None, error_dict) on failure."""
+    factory = get_agent_factory()
+    try:
+        result = await asyncio.wait_for(
+            factory.job_validator.validate_job_with_reason(job),
+            timeout=_PER_JOB_VALIDATION_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(f"Validation timeout for job {job.id}")
+        return None, {
+            "id": job.id,
+            "title": job.title,
+            "company": job.company,
+            "url": job.url,
+            "reason": "Validation timeout",
+        }
+
+    if result.is_valid:
+        return job, None
+
+    logger.debug(f"Job {job.id} validation failed: {result.reason_text}")
+    return None, {
+        "id": job.id,
+        "title": job.title,
+        "company": job.company,
+        "url": job.url,
+        "reason": result.reason_text,
+    }
 
 
 @router.post("/orchestrate")
@@ -109,8 +147,11 @@ async def orchestrate(
 
         # Determine workflow: use provided jobs or run scout
         valid_jobs = []
+        jobs_rejected_by_validator = []
         if request.jobs:
-            logger.info(f"Using {len(request.jobs)} provided jobs, skipping scout")
+            logger.info(
+                f"Using {len(request.jobs)} provided jobs, skipping scout and validation"
+            )
             valid_jobs = request.jobs
         elif request.criteria:
             logger.info(f"Running scout with criteria: {request.criteria}")
@@ -120,9 +161,20 @@ async def orchestrate(
                 found_jobs = scout_result.get("found_jobs", [])
                 logger.info(f"Scout found {len(found_jobs)} jobs")
 
-                # TODO: In full implementation, run validator here
-                # For now, assume found jobs are valid
-                valid_jobs = found_jobs
+                # Validate jobs: check for dead links and expired postings
+                logger.info(f"Validating {len(found_jobs)} jobs")
+                for job in found_jobs:
+                    valid, error = await _validate_single_job(job)
+                    if valid is not None:
+                        valid_jobs.append(valid)
+                    elif error is not None:
+                        jobs_rejected_by_validator.append(error)
+
+                logger.info(
+                    f"Validation complete: {len(valid_jobs)} valid, "
+                    f"{len(jobs_rejected_by_validator)} rejected"
+                )
+
             except Exception as e:
                 logger.error(
                     f"Scout failed: {type(e).__name__}: {repr(e)}",
@@ -273,7 +325,7 @@ async def orchestrate(
                 all_job_results.append(job_result)
                 shortlisted_results.append(job_result)
 
-        # Add rejected jobs to all_job_results
+        # Add rejected jobs to all_job_results (orchestrator rejections)
         for job in rejected_by_orchestrator:
             job_result = OrchestrateJobResult(
                 id=job.id,
@@ -287,6 +339,20 @@ async def orchestrate(
             )
             all_job_results.append(job_result)
 
+        # Add validation rejections to all_job_results
+        for rejected in jobs_rejected_by_validator:
+            job_result = OrchestrateJobResult(
+                id=rejected["id"],
+                title=rejected["title"],
+                company=rejected["company"],
+                url=rejected["url"],
+                match_score=0.0,
+                analysis=None,
+                evaluation=None,
+                error=f"Validation failed: {rejected['reason']}",
+            )
+            all_job_results.append(job_result)
+
         # Filter shortlisted by score threshold
         final_shortlisted = [
             job
@@ -294,9 +360,11 @@ async def orchestrate(
             if job.match_score >= request.score_threshold
         ]
 
-        # Filter rejected: below threshold or had errors
+        # Filter rejected: below threshold or had errors (including validation rejections)
         final_rejected = [
-            job for job in all_job_results if job.match_score < request.score_threshold
+            job
+            for job in all_job_results
+            if job.match_score < request.score_threshold or job.error is not None
         ]
 
         status = (
