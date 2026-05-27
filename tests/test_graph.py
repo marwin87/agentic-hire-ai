@@ -1,7 +1,13 @@
 import pytest
 from typing import cast, Any
 from unittest.mock import MagicMock, patch
-from src.graph import should_rescout, validate_and_limit_jobs_node, build_graph
+from src.graph import (
+    should_rescout,
+    validate_and_limit_jobs_node,
+    orchestrator_node,
+    tailor_node,
+    build_graph,
+)
 from src.schema.state import AgenticHireState, JobOffer
 from langgraph.graph import StateGraph, END
 
@@ -224,10 +230,8 @@ def test_build_graph_compiles_and_adds_nodes_edges(
     mock_workflow.add_node.assert_any_call(
         "validate_jobs", validate_and_limit_jobs_node
     )
-    mock_workflow.add_node.assert_any_call(
-        "orchestrator", mock_factory_instance.orchestrator
-    )
-    mock_workflow.add_node.assert_any_call("tailor", mock_factory_instance.tailor)
+    mock_workflow.add_node.assert_any_call("orchestrator", orchestrator_node)
+    mock_workflow.add_node.assert_any_call("tailor", tailor_node)
 
     # Assert entry point was set
     mock_workflow.set_entry_point.assert_called_once_with("scout")

@@ -10,36 +10,67 @@ def should_rescout(state: AgenticHireState) -> str:
     """
     Conditional logic to decide whether to re-run the scout or proceed.
     """
-    logger.info("Evaluating conditional edge 'should_rescout'")
     valid_jobs = state.get("valid_jobs", [])
     found_jobs = state.get("found_jobs", [])
     rejected_jobs = state.get("rejected_jobs", [])
     max_offers = state.get("max_offers", 5)
     scout_runs = state.get("scout_runs", 0)
 
-    logger.debug(
-        f"State variables - found_jobs count: {len(found_jobs)}, valid_jobs count: {len(valid_jobs)} | Total rejected jobs: {len(rejected_jobs)} | Scout runs: {scout_runs}/{config.max_scout_runs}"
+    logger.info(
+        f"[ORCHESTRATOR] Evaluating should_rescout: found={len(found_jobs)}, valid={len(valid_jobs)}, target={max_offers}, runs={scout_runs}/{config.max_scout_runs}"
     )
 
     if scout_runs >= config.max_scout_runs:
-        logger.warning("Max scout runs reached. Proceeding with available jobs.")
+        logger.warning(
+            f"[ORCHESTRATOR] Max scout runs reached ({scout_runs}/{config.max_scout_runs}). Proceeding to orchestrator."
+        )
         return "proceed"
 
     if len(valid_jobs) >= max_offers:
         logger.info(
-            f"Target of {max_offers} valid jobs reached (currently {len(valid_jobs)}). Proceeding."
+            f"[ORCHESTRATOR] Target of {max_offers} valid jobs reached ({len(valid_jobs)} current). Proceeding to orchestrator."
         )
         return "proceed"
 
     if not found_jobs and scout_runs > 0:
         # If we've already tried and still have nothing, stop.
         logger.warning(
-            "No jobs found in the previous scout run. Stopping to prevent infinite loops."
+            "[ORCHESTRATOR] No jobs found in scout attempt. Stopping to prevent infinite loop."
         )
         return "end"
 
-    logger.info("Requirements not met, deciding to 'rescout'")
+    logger.info(
+        f"[ORCHESTRATOR] Proceeding to rescout. Need {max_offers - len(valid_jobs)} more jobs."
+    )
     return "rescout"
+
+
+async def orchestrator_node(state: AgenticHireState) -> dict[str, Any]:
+    """Wrapper to add logging around orchestrator agent invocation."""
+    factory = get_agent_factory()
+    valid_jobs = state.get("valid_jobs", [])
+    cv_context = state.get("resume_context", "")
+    logger.info(
+        f"[ORCHESTRATOR] Invoking Orchestrator with {len(valid_jobs)} valid jobs and {len(cv_context)} chars of CV context"
+    )
+    result = await factory.orchestrator(state)
+    shortlisted = result.get("shortlisted_jobs", [])
+    logger.info(
+        f"[ORCHESTRATOR] Orchestrator complete: {len(shortlisted)} shortlisted (score >= 0.6)"
+    )
+    return result
+
+
+async def tailor_node(state: AgenticHireState) -> dict[str, Any]:
+    """Wrapper to add logging around tailor agent invocation."""
+    factory = get_agent_factory()
+    shortlisted_jobs = state.get("shortlisted_jobs", [])
+    logger.info(
+        f"[ORCHESTRATOR] Invoking Tailor for {len(shortlisted_jobs)} shortlisted jobs"
+    )
+    result = await factory.tailor(state)
+    logger.info("[ORCHESTRATOR] Tailor complete: evaluations generated")
+    return result
 
 
 async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any]:
@@ -47,11 +78,12 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
     Node to filter out invalid or expired job offers and limit the number.
     """
     factory = get_agent_factory()
-    logger.info("--- [NODE] EXECUTING JOB VALIDATION ---")
     found_jobs = state.get("found_jobs", [])
     max_offers = state.get("max_offers", 5)
 
-    logger.debug(f"Validating {len(found_jobs)} found jobs")
+    logger.info(
+        f"[ORCHESTRATOR] Validating {len(found_jobs)} found jobs, targeting {max_offers} max"
+    )
 
     validated_jobs_with_status = []
     rejected_jobs = []  # New list for invalid jobs
@@ -64,11 +96,12 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
 
     valid_jobs = validated_jobs_with_status
 
-    logger.debug(f"Found {len(valid_jobs)} valid jobs out of {len(found_jobs)}")
-
     # Limit the number of jobs to the configured maximum
     limited_jobs = valid_jobs[:max_offers]
-    logger.debug(f"Limited jobs to {len(limited_jobs)} (max_offers={max_offers})")
+
+    logger.info(
+        f"[ORCHESTRATOR] Validation complete: {len(valid_jobs)} valid, {len(rejected_jobs)} rejected, {len(limited_jobs)} passed after limiting"
+    )
 
     return {
         "valid_jobs": limited_jobs,
@@ -80,14 +113,14 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
 def build_graph() -> Any:
     factory = get_agent_factory()
     # 2. Initialize the Graph with our State schema
-    logger.debug("Building LangGraph workflow")
+    logger.info("[ORCHESTRATOR] Building LangGraph workflow")
     workflow = StateGraph(AgenticHireState)
 
     # 3. Add Nodes (The Workers)
     workflow.add_node("scout", factory.scout)
     workflow.add_node("validate_jobs", validate_and_limit_jobs_node)
-    workflow.add_node("orchestrator", factory.orchestrator)
-    workflow.add_node("tailor", factory.tailor)
+    workflow.add_node("orchestrator", orchestrator_node)
+    workflow.add_node("tailor", tailor_node)
 
     # 4. Set the Entry Point
     workflow.set_entry_point("scout")
