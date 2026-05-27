@@ -547,28 +547,29 @@
 
             try {
                 searchBtn.disabled = true;
-                statusEl.textContent = "⏳ Searching for jobs...";
+                statusEl.textContent = "⏳ Running LangGraph workflow (Scout → Validate → Orchestrator → Tailor)...";
                 statusEl.className = "search-status loading show";
 
-                const response = await apiCall("/scout", "POST", {
+                const response = await apiCall("/workflows/search-jobs", "POST", {
                     criteria: criteria,
-                    max_results: maxResults
+                    score_threshold: 0.6
                 });
 
-                const count = response.count || 0;
-                const status = response.status || "Search complete";
+                const shortlistCount = (response.shortlisted_jobs || []).length;
+                const allCount = (response.all_jobs || []).length;
+                const status = response.status || "Workflow complete";
 
-                if (count > 0) {
+                if (shortlistCount > 0 || allCount > 0) {
                     displaySearchResults(response);
-                    statusEl.textContent = `✅ Found ${count} job(s)!`;
+                    statusEl.textContent = `✅ Workflow complete: ${shortlistCount} shortlisted, ${allCount} total processed`;
                     statusEl.className = "search-status success show";
                 } else {
-                    statusEl.textContent = `ℹ️ No jobs found. Status: ${status}`;
+                    statusEl.textContent = `ℹ️ No jobs matched. Status: ${status}`;
                     statusEl.className = "search-status show";
                 }
             } catch (error) {
                 console.error("Search error:", error);
-                statusEl.textContent = `❌ Search failed: ${error.detail || error.message || "Unknown error"}`;
+                statusEl.textContent = `❌ Workflow failed: ${error.detail || error.message || "Unknown error"}`;
                 statusEl.className = "search-status error show";
             } finally {
                 searchBtn.disabled = false;
@@ -578,27 +579,60 @@
         function displaySearchResults(response) {
             const resultsDiv = document.getElementById("search-results");
             const resultsContent = document.getElementById("results-content");
-            const jobs = response.found_jobs || [];
+            const allJobs = response.all_jobs || [];
+            const shortlistedJobs = response.shortlisted_jobs || [];
+            const rejectedJobs = response.rejected_jobs || [];
+            const status = response.status || "Workflow complete";
+            const errorCount = response.error_count || 0;
 
-            let html = `<p><strong>Search ID:</strong> ${response.search_id}</p>`;
-            html += `<p><strong>Criteria:</strong> ${response.criteria}</p>`;
-            html += `<p><strong>Found:</strong> ${response.count} job(s)</p>`;
-            html += `<p><strong>Timestamp:</strong> ${new Date(response.timestamp).toLocaleString()}</p>`;
+            let html = `<p><strong>Status:</strong> ${status}</p>`;
+            html += `<p><strong>Total Processed:</strong> ${allJobs.length} job(s)</p>`;
+            if (errorCount > 0) {
+                html += `<p style="color: #d32f2f;"><strong>⚠️ Errors:</strong> ${errorCount} job(s) failed to process</p>`;
+            }
 
-            if (jobs.length > 0) {
-                html += `<div style="margin-top: 20px;">`;
-                jobs.forEach((job, index) => {
+            // Display shortlisted jobs prominently
+            if (shortlistedJobs.length > 0) {
+                html += `<div style="margin-top: 25px;">
+                    <h3 style="color: #4caf50; margin-bottom: 15px;">✅ Shortlisted Jobs (${shortlistedJobs.length})</h3>`;
+                shortlistedJobs.forEach((job, index) => {
+                    const scorePercent = (job.match_score * 100).toFixed(1);
                     html += `
-                        <div style="background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 6px; border-left: 4px solid #667eea;">
-                            <h3 style="margin: 0 0 10px 0; color: #333;">${index + 1}. ${job.title || 'N/A'}</h3>
+                        <div style="background: #e8f5e9; padding: 15px; margin: 10px 0; border-radius: 6px; border-left: 4px solid #4caf50;">
+                            <h4 style="margin: 0 0 10px 0; color: #333;">${index + 1}. ${job.title || 'N/A'}</h4>
                             <p style="margin: 5px 0;"><strong>Company:</strong> ${job.company || 'N/A'}</p>
                             <p style="margin: 5px 0;"><strong>URL:</strong> <a href="${job.url}" target="_blank" style="color: #667eea;">${job.url || 'N/A'}</a></p>
-                            ${job.salary_range ? `<p style="margin: 5px 0;"><strong>Salary:</strong> ${job.salary_range}</p>` : ''}
-                            ${job.description ? `<p style="margin: 5px 0;"><strong>Description:</strong> ${job.description.substring(0, 200)}...</p>` : ''}
+                            <p style="margin: 5px 0;"><strong style="color: #4caf50;">Match Score:</strong> ${scorePercent}%</p>
+                            ${job.analysis ? `<p style="margin: 5px 0;"><strong>Analysis:</strong> ${job.analysis}</p>` : ''}
+                            ${job.evaluation ? `<p style="margin: 5px 0; font-style: italic;"><strong>Evaluation:</strong> ${job.evaluation}</p>` : ''}
                         </div>
                     `;
                 });
                 html += `</div>`;
+            }
+
+            // Display rejected jobs (below threshold)
+            if (rejectedJobs.length > 0) {
+                html += `<div style="margin-top: 25px;">
+                    <h3 style="color: #d32f2f; margin-bottom: 15px;">❌ Below Threshold (${rejectedJobs.length})</h3>`;
+                rejectedJobs.forEach((job, index) => {
+                    const scorePercent = (job.match_score * 100).toFixed(1);
+                    html += `
+                        <div style="background: #ffebee; padding: 15px; margin: 10px 0; border-radius: 6px; border-left: 4px solid #d32f2f;">
+                            <h4 style="margin: 0 0 10px 0; color: #333;">${index + 1}. ${job.title || 'N/A'}</h4>
+                            <p style="margin: 5px 0;"><strong>Company:</strong> ${job.company || 'N/A'}</p>
+                            <p style="margin: 5px 0;"><strong>URL:</strong> <a href="${job.url}" target="_blank" style="color: #667eea;">${job.url || 'N/A'}</a></p>
+                            <p style="margin: 5px 0;"><strong style="color: #d32f2f;">Match Score:</strong> ${scorePercent}%</p>
+                            ${job.analysis ? `<p style="margin: 5px 0;"><strong>Analysis:</strong> ${job.analysis}</p>` : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            // Show message if no jobs found
+            if (allJobs.length === 0) {
+                html += `<p style="text-align: center; color: #999; margin-top: 20px;">No jobs found or processed.</p>`;
             }
 
             resultsContent.innerHTML = html;
