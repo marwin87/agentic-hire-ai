@@ -16,6 +16,7 @@ from src.api.routes import (
     auth,
     cv,
     workflows,
+    jobs,
 )
 from src.api.dependencies import get_current_user
 from src.config.settings import config
@@ -133,3 +134,4 @@ app.include_router(search.router)
 app.include_router(validation.router)
 app.include_router(cv.router)
 app.include_router(workflows.router)
+app.include_router(jobs.router)

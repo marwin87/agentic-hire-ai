@@ -3,7 +3,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, and_, cast
+from sqlalchemy import select, and_, cast, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User, CVFile, CVEmbedding, Job, Evaluation
@@ -167,8 +167,35 @@ class JobRepository:
     @staticmethod
     async def count_by_user(session: AsyncSession, user_id: UUID) -> int:
         """Count jobs for a user."""
-        result = await session.execute(select(Job).where(Job.user_id == user_id))
-        return len(result.scalars().all())
+        result = await session.execute(
+            select(func.count(Job.id)).where(Job.user_id == user_id)
+        )
+        return result.scalar() or 0
+
+    @staticmethod
+    async def get_jobs_with_scores(
+        session: AsyncSession, user_id: UUID, limit: int = 20, offset: int = 0
+    ) -> List[tuple[Job, Optional[float]]]:
+        """Retrieve jobs with optional match scores for a user.
+
+        Uses LEFT OUTER JOIN with Evaluation table so jobs without evaluations
+        still appear with match_score=None.
+        """
+        result = await session.execute(
+            select(Job, Evaluation)
+            .where(Job.user_id == user_id)
+            .outerjoin(
+                Evaluation,
+                (Evaluation.job_id == Job.id) & (Evaluation.user_id == user_id),
+            )
+            .order_by(Job.discovered_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return [
+            (job, eval_record.match_score if eval_record else None)
+            for job, eval_record in result.all()
+        ]
 
 
 class EvaluationRepository:

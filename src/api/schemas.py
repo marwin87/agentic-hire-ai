@@ -214,3 +214,34 @@ class OrchestrateResponse(BaseModel):
     error_count: int = Field(
         ..., description="Number of jobs that failed orchestration/tailor"
     )
+
+
+# Job list endpoint schemas
+
+
+class JobListItemResponse(BaseModel):
+    """Individual job item in job list response."""
+
+    id: str = Field(..., description="Job ID from Scout agent")
+    title: str = Field(..., description="Job title")
+    company: str = Field(..., description="Company name")
+    url: str = Field(..., description="Job posting URL")
+    match_score: Optional[float] = Field(
+        None,
+        description="Match score from 0.0 to 1.0, null if job not yet evaluated",
+        ge=0.0,
+        le=1.0,
+    )
+
+
+class GetJobsResponse(BaseModel):
+    """Response model for GET /jobs endpoint."""
+
+    page: int = Field(..., description="Current page number (1-indexed)", ge=1)
+    total_count: int = Field(
+        ..., description="Total number of jobs for this user", ge=0
+    )
+    page_size: int = Field(..., description="Number of items per page", ge=1, le=50)
+    jobs: list[JobListItemResponse] = Field(
+        ..., description="Job items for current page"
+    )
