@@ -1,4 +1,3 @@
-import asyncio
 from src.schema.state import AgenticHireState, JobOffer
 from src.tools.vectordb import CVVectorManager
 from pydantic import BaseModel, Field
@@ -53,9 +52,9 @@ class OrchestratorAgent:
             # We search for the job title and description in our vectors
             description_snippet = job.description[:200] if job.description else ""
             search_query = f"{job.title} {description_snippet}"
-            # Chroma has no async API, so wrap in asyncio.to_thread to avoid blocking
-            relevant_cv_parts = await asyncio.to_thread(
-                self.vector_manager.get_context, search_query, 3
+            # Use async method directly (pgvector queries are async-native)
+            relevant_cv_parts = await self.vector_manager.get_context_async(
+                search_query, 3
             )
 
             logger.debug(f"RAG retrieved context length: {len(relevant_cv_parts)}")
