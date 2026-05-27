@@ -126,3 +126,91 @@ class UploadCVResponse(BaseModel):
     file_hash: str = Field(..., description="SHA256 hash of the uploaded file")
     chunks_stored: int = Field(..., description="Number of embedding chunks created")
     status: str = Field(..., description="Upload status ('success' or error code)")
+
+
+# Orchestrate endpoint schemas
+
+
+class OrchestrateRequest(BaseModel):
+    """Request body for POST /orchestrate endpoint."""
+
+    criteria: Optional[str] = Field(
+        None,
+        description="Job search criteria for Scout agent (if omitted, use provided jobs)",
+    )
+    jobs: Optional[list[JobOffer]] = Field(
+        None,
+        description="Pre-found jobs to score directly (if omitted, run scout with criteria)",
+    )
+    score_threshold: float = Field(
+        default=0.6,
+        description="Minimum match score to include in response (0.0-1.0)",
+        ge=0.0,
+        le=1.0,
+    )
+
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "description": "Search-based orchestration",
+                    "value": {
+                        "criteria": "Python developer roles in AI/ML startups",
+                        "score_threshold": 0.6,
+                    },
+                },
+                {
+                    "description": "Pre-found jobs orchestration",
+                    "value": {
+                        "jobs": [
+                            {
+                                "id": "job-1",
+                                "title": "Senior Python Engineer",
+                                "company": "TechCorp",
+                                "url": "https://techcorp.com/jobs/1",
+                                "description": "Build scalable backend services",
+                                "salary_range": "$150k-$200k",
+                            }
+                        ],
+                        "score_threshold": 0.5,
+                    },
+                },
+            ]
+        }
+
+
+class OrchestrateJobResult(BaseModel):
+    """Individual job result in orchestrate response."""
+
+    id: str = Field(..., description="Job ID")
+    title: str = Field(..., description="Job title")
+    company: str = Field(..., description="Company name")
+    url: str = Field(..., description="Job URL")
+    match_score: float = Field(
+        ..., description="Match score from 0.0 to 1.0 (0 if not scored)"
+    )
+    analysis: Optional[str] = Field(None, description="Orchestrator reasoning")
+    evaluation: Optional[str] = Field(
+        None, description="Tailor-generated evaluation (if shortlisted)"
+    )
+    error: Optional[str] = Field(
+        None, description="Error message if job failed to process"
+    )
+
+
+class OrchestrateResponse(BaseModel):
+    """Response model for POST /orchestrate endpoint."""
+
+    all_jobs: list[OrchestrateJobResult] = Field(
+        ..., description="All processed jobs with match scores and evaluations"
+    )
+    shortlisted_jobs: list[OrchestrateJobResult] = Field(
+        ..., description="Jobs above score threshold with evaluations"
+    )
+    rejected_jobs: list[OrchestrateJobResult] = Field(
+        ..., description="Jobs below score threshold"
+    )
+    status: str = Field(..., description="Overall operation status message")
+    error_count: int = Field(
+        ..., description="Number of jobs that failed orchestration/tailor"
+    )
