@@ -30,7 +30,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | ID    | Change ID                  | Outcome (user can …)                              | Prerequisites        | PRD refs       | Status    |
 | ----- | -------------------------- | ------------------------------------------------- | -------------------- | -------------- | --------- |
 | F-01  | `fastapi-scaffold`         | (foundation) FastAPI server running locally       | —                    | FR-004, FR-005, FR-006 | done  |
-| F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007, FR-008 | done  |
+| F-02  | `postgresql-pgvector-setup` | (foundation) PostgreSQL + pgvector schema ready   | —                    | FR-009, FR-003, FR-007 | done  |
 | F-03  | `jwt-auth-middleware`      | (foundation) JWT tokens issued, auth endpoints live | F-01                | FR-001, FR-002 | done  |
 | F-04  | `cv-vision-to-pgvector`    | (foundation) CV embeddings stored in pgvector    | F-02                | FR-009, FR-013 | done  |
 | S-01  | `user-signup-auth`         | sign up with email + password and receive JWT    | F-01, F-02, F-03     | FR-001, FR-002, FR-003 | done  |
@@ -41,7 +41,6 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-06  | `graph-workflow-api`        | unified workflow endpoint: Scout → Validate → Orchestrate → Tailor via LangGraph | F-01, F-04, S-05   | FR-005, FR-012, FR-014 | done  |
 | S-07  | `tailor-api-endpoint`      | ~~invoke evaluation generation via FastAPI~~ (subsumed by S-06 unified workflow) | F-01, F-04           | FR-014         | subsumed  |
 | S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | done      |
-| S-09  | `user-evaluations`         | retrieve personal evaluation scores               | F-01, F-02           | FR-008         | proposed  |
 | F-05  | `docker-compose-hardening` | (foundation) full-stack Docker with health checks | F-01, F-02, F-03, F-04 | FR-010         | blocked   |
 
 ## Streams
@@ -51,7 +50,7 @@ Navigation aid — groups items into major feature threads. Each item appears in
 | Stream | Theme                          | Chain                                                  | Note                                                      |
 | ------ | ------------------------------ | ------------------------------------------------------ | --------------------------------------------------------- |
 | A      | Job discovery & validation     | F-01 → S-04 → S-05                                     | Scout and validate endpoints; feed results into scoring. |
-| B      | Results dashboard              | F-02 → S-08 → S-09                                     | User views discovered jobs and evaluation scores.        |
+| B      | Results dashboard              | F-02 → S-08                                            | User views discovered jobs.                              |
 | C      | User auth & session            | F-03 → S-01 → S-02                                     | User signup, login, token refresh; unlocks all workflows. |
 | D      | CV-based semantic matching     | F-04 → S-03 → S-06 → S-07                              | Upload CV, retrieve context, score jobs, generate summaries. |
 
@@ -74,7 +73,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** (foundation) FastAPI server running locally with basic project structure, route handlers, and dependency injection ready for agent endpoints.
 - **Change ID:** `fastapi-scaffold`
 - **PRD refs:** FR-004, FR-005, FR-006 (agent endpoints); FR-010 (Docker setup)
-- **Unlocks:** S-01, S-02, S-03, S-04, S-05, S-06, S-07, S-08 (all API slices depend on server)
+- **Unlocks:** S-01, S-02, S-03, S-04, S-05, S-06, S-08 (all API slices depend on server)
 - **Prerequisites:** —
 - **Parallel with:** F-02
 - **Blockers:** —
@@ -86,8 +85,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Outcome:** (foundation) PostgreSQL container running locally with pgvector extension installed, schema created for users, jobs, CV embeddings, evaluation results.
 - **Change ID:** `postgresql-pgvector-setup`
-- **PRD refs:** FR-003 (user isolation), FR-007 (job list), FR-008 (evaluation scores), FR-009 (pgvector embeddings)
-- **Unlocks:** S-01, S-03, S-05, S-06, S-07, S-08 (data-persistence and RAG-context slices)
+- **PRD refs:** FR-003 (user isolation), FR-007 (job list), FR-009 (pgvector embeddings)
+- **Unlocks:** S-01, S-03, S-05, S-06, S-08 (data-persistence and RAG-context slices)
 - **Prerequisites:** —
 - **Parallel with:** F-01
 - **Blockers:** —
@@ -233,23 +232,11 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** `user-job-list`
 - **PRD refs:** FR-007 (view job list)
 - **Prerequisites:** F-01 (API server), F-02 (jobs table keyed by user_id)
-- **Parallel with:** S-09
+- **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Database query performance for large job lists. Risk: N+1 queries, slow pagination. Mitigation: indexed queries on user_id; limit default page size.
 - **Status:** done
-
-### S-09: User can retrieve personal evaluation scores
-
-- **Outcome:** Endpoint `GET /evaluations` returns user's scored jobs (paginated). Response includes job title, company, match score, evaluation summary. User sees only their own evaluations.
-- **Change ID:** `user-evaluations`
-- **PRD refs:** FR-008 (view evaluation scores)
-- **Prerequisites:** F-01 (API server), F-02 (evaluations table keyed by user_id)
-- **Parallel with:** S-08
-- **Blockers:** —
-- **Unknowns:** —
-- **Risk:** Same as S-08.
-- **Status:** proposed (ready after F-02)
 
 ## Backlog Handoff
 
@@ -266,8 +253,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-05       | `validate-jobs-endpoint`    | Validate endpoint filters invalid/expired jobs      | yes                   | Minimal dependencies; can start after F-01. Feeds S-06. |
 | S-06       | `orchestrator-api-endpoint` | Orchestrator agent as FastAPI endpoint with RAG    | no                    | Depends on F-04 (CV context) and S-05 (validated jobs). Unblock by resolving F-04. |
 | S-07       | `tailor-api-endpoint`       | Tailor agent as FastAPI endpoint                   | no                    | Depends on S-06 (shortlisted jobs). Unblock by completing S-06. |
-| S-08       | `user-job-list`             | User job list retrieval endpoint                   | yes                   | Depends on F-02. Parallel with S-09. |
-| S-09       | `user-evaluations`          | User evaluation scores retrieval endpoint          | yes                   | Depends on F-02. Parallel with S-08. |
+| S-08       | `user-job-list`             | User job list retrieval endpoint                   | yes                   | Depends on F-02. |
 | F-05       | `docker-compose-hardening`  | Harden Docker Compose with health checks & limits  | no                    | Blocked: Deferred to Phase 2 in speed mode. Not critical for MVP. |
 
 ## Open Roadmap Questions

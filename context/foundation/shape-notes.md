@@ -117,7 +117,6 @@ Phase 1 FRs (all mandatory for 4-week MVP):
 - FR-005: Orchestrator can be invoked via FastAPI endpoint. Priority: must-have. Change: modified
 - FR-006: Validate can be invoked via FastAPI endpoint. Priority: must-have. Change: modified
 - FR-007: User can view personal job list (database-backed). Priority: must-have. Change: new
-- FR-008: User can view personal evaluation scores. Priority: must-have. Change: new
 - FR-009: CV embeddings stored in pgvector. Priority: must-have. Change: modified
 - FR-010: Full stack runs in Docker Compose locally. Priority: must-have. Change: new
 

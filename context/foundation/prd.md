@@ -105,7 +105,6 @@ And: The system parses the CV, generates embeddings, and stores them in pgvector
 - **FR-002**: User can log in with JWT token
 - **FR-003**: User can upload and store CV (isolated by user_id)
 - **FR-007**: User can view personal job list (database-backed)
-- **FR-008**: User can view personal evaluation scores
 - **FR-010**: Full stack runs in Docker Compose locally
 
 ### Modified Capabilities
