@@ -739,9 +739,9 @@ Backend changes in Phase 1 are covered by the existing pytest suite (`uv run pyt
 - [x] 5.4 `uv run black --check src/ tests/ main.py` exits 0
 - [x] 5.5 `uv run pytest tests/ -v --ignore=tests/integration` exits 0
 - [x] 5.6 `cd frontend && npm run type-check` exits 0
-- [ ] 5.7 CI pipeline passes
+- [x] 5.7 CI pipeline passes
 
 #### Manual
 
-- [ ] 5.8 Full stack via `docker compose up` — login → CV upload → search → tiles all work
-- [ ] 5.9 `ui.py` deleted, `ui/` directory deleted, FastAPI `/` returns 404
+- [x] 5.8 Full stack via `docker compose up` — login → CV upload → search → tiles all work
+- [x] 5.9 `ui.py` deleted, `ui/` directory deleted, FastAPI `/` returns 404
