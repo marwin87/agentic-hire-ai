@@ -3,7 +3,7 @@ project: AgenticHire AI — Production Readiness Refactor
 version: 1
 status: draft
 created: 2026-05-25
-updated: 2026-05-27
+updated: 2026-05-28
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -41,7 +41,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-06  | `graph-workflow-api`        | unified workflow endpoint: Scout → Validate → Orchestrate → Tailor via LangGraph | F-01, F-04, S-05   | FR-005, FR-012, FR-014 | done  |
 | S-07  | `tailor-api-endpoint`      | ~~invoke evaluation generation via FastAPI~~ (subsumed by S-06 unified workflow) | F-01, F-04           | FR-014         | subsumed  |
 | S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | done      |
-| F-05  | `docker-compose-hardening` | (foundation) full-stack Docker with health checks | F-01, F-02, F-03, F-04 | FR-010         | blocked   |
+| F-05  | `docker-compose-hardening` | (foundation) full-stack Docker with health checks | F-01, F-02, F-03, F-04 | FR-010         | done      |
 
 ## Streams
 
@@ -134,7 +134,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Docker composition and multi-service orchestration adds complexity. Risk: volume persistence, inter-service communication, environment variable leaks. Mitigation: current Dockerfile is already multi-stage and robust; Docker Compose exists (Streamlit version); reuse patterns.
-- **Status:** blocked (Deferred to Phase 2 in speed mode. Phase 1a minimal Docker Compose is implicit in F-01/F-02; Phase 1e hardening is post-launch polish.)
+- **Status:** done
 
 ## Slices
 
@@ -290,3 +290,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-05: invoke job validation via FastAPI endpoint** — Archived 2026-05-26 → `context/archive/2026-05-26-validate-jobs-endpoint/`. Lesson: —.
 - **S-06: unified workflow endpoint via LangGraph** — Archived 2026-05-27 → `context/archive/2026-05-27-graph-workflow-api/`. Endpoint `/api/workflows/search-jobs` unifies Scout → Validate → Orchestrate → Tailor pipeline with [ORCHESTRATOR] logging and per-job error handling. S-07 (tailor) subsumed. Dead endpoints (POST `/api/score_jobs`, POST `/api/evaluate_job/{job_id}`, POST `/api/orchestrate`) removed 2026-05-27 as superseded by unified workflow. Lesson: LangGraph as primary API orchestrator proves superior to separate agent endpoints; consolidation reduces API surface and simplifies client integration.
 - **S-08: retrieve personal job list (user-filtered)** — Archived 2026-05-27 → `context/archive/2026-05-27-user-job-list/`. GET /api/jobs endpoint with pagination, optional match scores, and multi-user isolation. Lesson: —.
+- **F-05: (foundation) Full-stack Docker Compose with all services (FastAPI, PostgreSQL, ChromaDB deprecation), health checks, resource limits, logging setup. Developers can run `docker-compose up` and have a production-like local environment.** — Archived 2026-05-28 → `context/archive/2026-05-28-docker-compose-hardening/`. Lesson: —.
