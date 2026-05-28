@@ -62,10 +62,7 @@ jobs:
           AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://localhost:8000
         run: |
           uv run pytest tests/ -v --tb=short \
-            --ignore=tests/test_api_endpoints.py \
-            --ignore=tests/tools/test_job_validator.py \
-            --ignore=tests/tools/test_scrape.py \
-            --ignore=tests/tools/test_search.py
+            --ignore=tests/integration  # requires DOCKER_INTEGRATION=true; run in docker-compose-test job
 
   docker-build:
     runs-on: ubuntu-latest
@@ -99,6 +96,7 @@ jobs:
       - name: Build Docker Compose services
         env:
           AGENTIC_HIRE_OPENROUTER_API_KEY: test_key_for_ci
+          AGENTIC_HIRE_JWT_SECRET_KEY: test_jwt_secret_key_for_ci_32chars_min
           POSTGRES_USER: agentic_hire
           POSTGRES_PASSWORD: dev_password
           POSTGRES_DB: agentic_hire
@@ -107,6 +105,7 @@ jobs:
       - name: Start services
         env:
           AGENTIC_HIRE_OPENROUTER_API_KEY: test_key_for_ci
+          AGENTIC_HIRE_JWT_SECRET_KEY: test_jwt_secret_key_for_ci_32chars_min
           POSTGRES_USER: agentic_hire
           POSTGRES_PASSWORD: dev_password
           POSTGRES_DB: agentic_hire
@@ -119,6 +118,25 @@ jobs:
 
           # Check API health (api service maps 8001:8000)
           curl -f http://localhost:8001/health || exit 1
+
+      - name: Test graceful shutdown
+        run: |
+          # docker compose stop sends SIGTERM and waits for clean exit without
+          # triggering restart: unless-stopped (unlike docker compose kill)
+          docker compose stop
+          # All containers should have stopped (Compose V2 uses "running" not "Up")
+          if docker compose ps --status=running -q | grep -q .; then
+            echo "ERROR: containers still running after docker compose stop"
+            docker compose ps -a
+            exit 1
+          fi
+          # Exit code 0 = clean SIGTERM shutdown; 137 = force-killed (SIGKILL timeout)
+          api_status=$(docker inspect agentic-hire-api --format='{{.State.ExitCode}}' 2>/dev/null || echo "unknown")
+          if [ "$api_status" = "137" ]; then
+            echo "WARNING: api was force-killed (exit 137) — did not respond to SIGTERM within grace period"
+            exit 1
+          fi
+          echo "✓ All services exited cleanly (api exit code: $api_status)"
 
       - name: Cleanup
         if: always()

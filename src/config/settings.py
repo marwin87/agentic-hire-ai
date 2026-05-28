@@ -22,6 +22,12 @@ class AppConfig(BaseSettings):
     debug_mode: bool = Field(
         True, description="Enable debug mode for more verbose logging and features."
     )
+    log_level: str = Field(
+        "DEBUG", description="Log level: DEBUG, INFO, WARNING, ERROR"
+    )
+    environment: str = Field(
+        "development", description="Runtime environment: development or production"
+    )
 
     # API configuration
     openrouter_base_url: str = Field("https://openrouter.ai/api/v1")

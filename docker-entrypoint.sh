@@ -1,14 +1,30 @@
 #!/bin/bash
 set -e
 
+# Forward SIGTERM to child processes and exit cleanly during the startup phase.
+# Without this trap, bash ignores SIGTERM and Docker escalates to SIGKILL (exit 137).
+# Once `exec uvicorn` replaces this bash process, uvicorn handles SIGTERM itself.
+trap 'echo "Caught SIGTERM during startup, exiting..."; exit 0' SIGTERM SIGINT
+
 echo "Starting AgenticHire AI application..."
 
-# Extract host and port from DATABASE_URL
-# Format: postgresql+asyncpg://user:password@host:port/db
+# Validate required environment variables before doing anything else.
+# Fails fast (<1s) with a clear error instead of a 5+ minute health check timeout.
+echo "=== Validating required environment variables ==="
+REQUIRED_VARS=("AGENTIC_HIRE_OPENROUTER_API_KEY" "AGENTIC_HIRE_JWT_SECRET_KEY" "AGENTIC_HIRE_DATABASE_URL")
+for var in "${REQUIRED_VARS[@]}"; do
+    if [ -z "${!var}" ]; then
+        echo "ERROR: Required environment variable $var is not set."
+        echo "       Set it in your .env file or pass it via docker-compose environment."
+        exit 1
+    fi
+done
+echo "✓ All required environment variables are set"
+
+# Extract host and port from DATABASE_URL using Python for reliable URL parsing
 if [ -n "$AGENTIC_HIRE_DATABASE_URL" ]; then
-    DB_HOST=$(echo "$AGENTIC_HIRE_DATABASE_URL" | sed -n 's/.*@\([^:]*\).*/\1/p')
-    DB_PORT=$(echo "$AGENTIC_HIRE_DATABASE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
-    DB_PORT=${DB_PORT:-5432}
+    DB_HOST=$(python -c "from urllib.parse import urlparse; import os; print(urlparse(os.environ['AGENTIC_HIRE_DATABASE_URL']).hostname)")
+    DB_PORT=$(python -c "from urllib.parse import urlparse; import os; print(urlparse(os.environ['AGENTIC_HIRE_DATABASE_URL']).port or 5432)")
 
     echo "Waiting for database at $DB_HOST:$DB_PORT..."
 
@@ -33,12 +49,7 @@ if [ -n "$AGENTIC_HIRE_DATABASE_URL" ]; then
     # Run database migrations
     echo "Running database migrations..."
     alembic upgrade head
-
-    if [ $? -eq 0 ]; then
-        echo "Migrations completed successfully!"
-    else
-        echo "Warning: Migrations completed with warnings, but continuing..."
-    fi
+    echo "Migrations completed successfully!"
 fi
 
 echo ""

@@ -10,7 +10,7 @@ from typing import Any, cast
 
 def _configure_application() -> None:
     """Configures logging for the application."""
-    setup_logging(debug=config.debug_mode)
+    setup_logging(debug=config.debug_mode, log_level=config.log_level)
 
 
 def _prepare_cv_data(cv_file_path: str, factory_instance: Any) -> Any:

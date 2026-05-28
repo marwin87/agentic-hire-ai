@@ -1,0 +1,27 @@
+# Production overrides for docker-compose.yml
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# What this changes vs the base file:
+#   - Sets AGENTIC_HIRE_ENVIRONMENT=production and LOG_LEVEL=INFO
+#   - Tightens memory limits (3G limit, 1G reservation)
+#
+# Note: source-code bind mounts are NOT in the base file — dev mounts
+#   live in docker-compose.dev.yml. The base is already production-clean.
+
+services:
+  api:
+    environment:
+      AGENTIC_HIRE_ENVIRONMENT: production
+      AGENTIC_HIRE_LOG_LEVEL: INFO
+
+    # Tighter memory limits for production (reduce reservation headroom)
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '1'

@@ -19,6 +19,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
     networks:
       - agentic-hire-net
     restart: unless-stopped
@@ -39,7 +44,7 @@ services:
       AGENTIC_HIRE_OPENROUTER_API_KEY: ${AGENTIC_HIRE_OPENROUTER_API_KEY}
 
       # Required: JWT secret key (generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))')
-      AGENTIC_HIRE_JWT_SECRET_KEY: ${AGENTIC_HIRE_JWT_SECRET_KEY:-dev_secret_key_change_in_production}
+      AGENTIC_HIRE_JWT_SECRET_KEY: ${AGENTIC_HIRE_JWT_SECRET_KEY}
 
       # Required: PostgreSQL connection string
       AGENTIC_HIRE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentic_hire}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-agentic_hire}
@@ -54,18 +59,8 @@ services:
       AGENTIC_HIRE_ENVIRONMENT: ${AGENTIC_HIRE_ENVIRONMENT:-development}
 
     volumes:
-      # Bind mount: only source code for live changes (not .venv or docker-entrypoint.sh)
-      - ./src:/app/src
-      - ./ui:/app/ui
-      - ./alembic:/app/alembic
-      - ./main.py:/app/main.py
-      - ./ui.py:/app/ui.py
-
       # Bind mount: CV files (user drops PDFs here from host)
       - ./data/cv:/app/data/cv
-
-      # Named volume: ChromaDB vector store (persists across restarts)
-      - chroma_db:/app/data/chroma_db
 
     # Health check for FastAPI API only (port 8000 inside container, 8001 on host)
     # Note: OrioSearch is checked once at startup in docker-entrypoint.sh
@@ -77,23 +72,28 @@ services:
       retries: 3
       start_period: 15s
 
-    # Optional: resource limits (adjust for your hardware)
+    # Resource limits: memory caps prevent OOM; CPU limits prevent runaway agents from saturating host
     deploy:
       resources:
         limits:
           memory: 4G
+          cpus: '2'
         reservations:
           memory: 2G
+          cpus: '1'
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
 
     networks:
       - agentic-hire-net
     restart: unless-stopped
 
 volumes:
-  # Named volume for persistent ChromaDB storage (deprecated in favor of PostgreSQL)
-  chroma_db:
-    driver: local
-  # Named volume for persistent PostgreSQL data
+  # Named volume for persistent PostgreSQL data (primary storage)
   postgres_data:
     driver: local
 

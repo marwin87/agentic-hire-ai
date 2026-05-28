@@ -1,0 +1,19 @@
+# Development overrides for docker-compose.yml
+#
+# Adds source-code bind mounts for live reloading during development.
+# The base docker-compose.yml is production-clean (built image only).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Alias for convenience (add to your shell rc):
+#   alias dc-dev='docker compose -f docker-compose.yml -f docker-compose.dev.yml'
+
+services:
+  api:
+    volumes:
+      - ./src:/app/src
+      - ./ui:/app/ui
+      - ./alembic:/app/alembic
+      - ./main.py:/app/main.py
+      - ./ui.py:/app/ui.py
