@@ -79,3 +79,6 @@ class AgenticHireState(TypedDict, total=False):
 
     # A list of unique job URLs that have been processed across all scouting cycles
     seen_jobs: Annotated[List[str], deduplicate_seen_jobs]
+
+    # Minimum match score to shortlist a job (passed from the API request)
+    score_threshold: float

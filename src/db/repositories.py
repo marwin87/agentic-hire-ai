@@ -197,6 +197,29 @@ class JobRepository:
             for job, eval_record in result.all()
         ]
 
+    @staticmethod
+    async def delete_by_id(session: AsyncSession, job_id: str, user_id: UUID) -> bool:
+        """Delete a single job owned by the user. Returns True if deleted."""
+        result = await session.execute(
+            select(Job).where(Job.id == job_id, Job.user_id == user_id)
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            return False
+        await session.delete(job)
+        await session.flush()
+        return True
+
+    @staticmethod
+    async def delete_all_by_user(session: AsyncSession, user_id: UUID) -> int:
+        """Delete all jobs for a user. Returns count deleted."""
+        result = await session.execute(select(Job).where(Job.user_id == user_id))
+        jobs = list(result.scalars().all())
+        for job in jobs:
+            await session.delete(job)
+        await session.flush()
+        return len(jobs)
+
 
 class EvaluationRepository:
     """Repository for Evaluation CRUD operations."""

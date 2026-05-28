@@ -1,18 +1,21 @@
 """Workflow endpoints - primary orchestration API."""
 
+from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.agents import AgentFactory
 from src.api.dependencies import get_current_user, get_db
 from src.api.schemas import (
+    OrchestrateJobResult,
     OrchestrateRequest,
     OrchestrateResponse,
-    OrchestrateJobResult,
+    WorkflowStreamEvent,
 )
 from src.api.vectordb_async import get_cv_context_async
 from src.db import User
@@ -99,6 +102,7 @@ async def search_jobs_workflow(
             "scout_runs": 0,
             "search_queries": [],
             "seen_jobs": [],
+            "score_threshold": request.score_threshold,
         }
 
         # Determine workflow: use provided jobs or run graph
@@ -226,3 +230,227 @@ async def search_jobs_workflow(
             status=f"Workflow failed: {str(e)}",
             error_count=1,
         )
+
+
+def _extract_node_summary(
+    node_name: str, node_update: dict[str, Any]
+) -> dict[str, Any]:
+    """Extract a human-readable summary dict from a LangGraph node update."""
+    if node_name == "scout":
+        return {
+            "jobs_found": len(node_update.get("found_jobs", [])),
+            "scout_run": node_update.get("scout_runs", 0),
+        }
+    if node_name == "validate_jobs":
+        return {
+            "jobs_valid": len(node_update.get("valid_jobs", [])),
+            "jobs_rejected": len(node_update.get("rejected_jobs", [])),
+        }
+    if node_name == "orchestrator":
+        return {
+            "jobs_shortlisted": len(node_update.get("shortlisted_jobs", [])),
+        }
+    if node_name == "tailor":
+        return {
+            "evaluations": len(node_update.get("applications", {})),
+        }
+    return {}
+
+
+@router.post("/workflows/search-jobs/stream")
+async def search_jobs_stream(
+    request: OrchestrateRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Stream LangGraph workflow progress as Server-Sent Events.
+
+    Emits one WorkflowStreamEvent per node completion, followed by a final
+    'workflow' event carrying the complete OrchestrateResponse. Each event is
+    formatted as an SSE 'data:' line.
+
+    Args:
+        request: OrchestrateRequest with criteria and/or jobs list
+        user: Authenticated user from JWT
+        session: Database session for persistence
+
+    Returns:
+        StreamingResponse with text/event-stream content type
+    """
+    logger.info(
+        f"POST /workflows/search-jobs/stream requested by {user.email} with "
+        f"criteria={'yes' if request.criteria else 'no'}, "
+        f"jobs={len(request.jobs) if request.jobs else 0}"
+    )
+
+    if not request.criteria and not request.jobs:
+        raise HTTPException(
+            status_code=422,
+            detail="Provide either criteria or jobs",
+        )
+
+    if not user.id or not isinstance(user.id, UUID):
+        raise HTTPException(status_code=401, detail="Invalid user identity")
+
+    # Build CV context and initial state before entering the generator so
+    # HTTP-layer errors (auth, bad input) surface as proper HTTP responses
+    # rather than as SSE error events the client may not detect.
+    factory = AgentFactory(user_id=user.id)
+    cv_context = ""
+    try:
+        query = request.criteria if request.criteria else "job requirements"
+        cv_context = await get_cv_context_async(factory.vector_manager, query)
+        logger.debug(f"CV context retrieved: {len(cv_context)} characters")
+    except KeyError:
+        logger.warning(
+            f"CV not found for user {user.id}; continuing without CV context"
+        )
+    except Exception as e:
+        # CV retrieval failure is recoverable — log and continue with empty context
+        logger.error(
+            f"CV context retrieval failed (non-critical): {type(e).__name__}: {repr(e)}",
+            exc_info=True,
+        )
+
+    initial_state: AgenticHireState = {
+        "resume_context": cv_context,
+        "target_criteria": request.criteria or "",
+        "found_jobs": [],
+        "valid_jobs": request.jobs or [],
+        "shortlisted_jobs": [],
+        "rejected_jobs": [],
+        "applications": {},
+        "status": "Starting streaming orchestration...",
+        "max_offers": len(request.jobs) if request.jobs else 10,
+        "scout_runs": 0,
+        "search_queries": [],
+        "seen_jobs": [],
+        "score_threshold": request.score_threshold,
+    }
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        # Accumulators for reconstructing the final OrchestrateResponse.
+        # Fields with operator.add annotation (found_jobs, rejected_jobs) accumulate
+        # across multiple node runs (e.g. rescout loop); others are overwritten.
+        accumulated_found_jobs: list[Any] = []
+        accumulated_rejected_jobs: list[Any] = []
+        last_valid_jobs: list[Any] = []
+        last_shortlisted_jobs: list[Any] = []
+        last_applications: dict[str, Any] = {}
+
+        try:
+            graph = build_graph()
+            logger.info("[STREAM] Starting graph.astream()")
+
+            async for event in graph.astream(initial_state, stream_mode="updates"):
+                for node_name, node_update in event.items():
+                    logger.info(f"[STREAM] Node complete: {node_name}")
+
+                    # Accumulate state for final response reconstruction
+                    if node_name == "scout":
+                        accumulated_found_jobs += node_update.get("found_jobs", [])
+                    elif node_name == "validate_jobs":
+                        last_valid_jobs = node_update.get("valid_jobs", [])
+                        accumulated_rejected_jobs += node_update.get(
+                            "rejected_jobs", []
+                        )
+                    elif node_name == "orchestrator":
+                        last_shortlisted_jobs = node_update.get("shortlisted_jobs", [])
+                        accumulated_rejected_jobs += node_update.get(
+                            "rejected_jobs", []
+                        )
+                    elif node_name == "tailor":
+                        last_applications = node_update.get("applications", {})
+
+                    summary = _extract_node_summary(node_name, node_update)
+                    stream_event = WorkflowStreamEvent(
+                        node=node_name,
+                        status="complete",
+                        data=summary,
+                    )
+                    yield f"data: {stream_event.model_dump_json()}\n\n"
+
+            logger.info(
+                "[STREAM] Graph execution complete; emitting workflow_complete event"
+            )
+
+            # Build final OrchestrateResponse using the same logic as the ainvoke endpoint
+            all_job_results: list[OrchestrateJobResult] = []
+            shortlisted_results: list[OrchestrateJobResult] = []
+
+            for job in last_shortlisted_jobs:
+                evaluation_data = last_applications.get(job.id, {})
+                evaluation = evaluation_data.get("founded_job_offer", "")
+                job_result = OrchestrateJobResult(
+                    id=job.id,
+                    title=job.title,
+                    company=job.company,
+                    url=job.url,
+                    match_score=job.match_score,
+                    analysis=job.analysis,
+                    evaluation=evaluation,
+                    error=None,
+                )
+                all_job_results.append(job_result)
+                shortlisted_results.append(job_result)
+
+            for job in accumulated_rejected_jobs:
+                job_result = OrchestrateJobResult(
+                    id=job.id,
+                    title=job.title,
+                    company=job.company,
+                    url=job.url,
+                    match_score=job.match_score if hasattr(job, "match_score") else 0.0,
+                    analysis=job.analysis if hasattr(job, "analysis") else None,
+                    evaluation=None,
+                    error=None,
+                )
+                all_job_results.append(job_result)
+
+            final_shortlisted = [
+                j
+                for j in shortlisted_results
+                if j.match_score >= request.score_threshold
+            ]
+            final_rejected = [
+                j for j in all_job_results if j.match_score < request.score_threshold
+            ]
+
+            final_response = OrchestrateResponse(
+                all_jobs=all_job_results,
+                shortlisted_jobs=final_shortlisted,
+                rejected_jobs=final_rejected,
+                status=(
+                    f"Workflow complete: {len(final_shortlisted)} shortlisted, "
+                    f"{len(final_rejected)} below threshold"
+                ),
+                error_count=0,
+            )
+            completion_event = WorkflowStreamEvent(
+                node="workflow",
+                status="complete",
+                data=final_response.model_dump(),
+            )
+            yield f"data: {completion_event.model_dump_json()}\n\n"
+
+        except Exception as e:
+            logger.error(
+                f"[STREAM] Graph execution failed: {type(e).__name__}: {repr(e)}",
+                exc_info=True,
+            )
+            error_event = WorkflowStreamEvent(
+                node="workflow",
+                status="error",
+                data={"message": str(e)},
+            )
+            yield f"data: {error_event.model_dump_json()}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )

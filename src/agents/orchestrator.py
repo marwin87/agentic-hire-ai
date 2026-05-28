@@ -34,6 +34,7 @@ class OrchestratorAgent:
         logger.info("--- [NODE] EXECUTING ORCHESTRATOR (MATCHMAKER) ---")
 
         valid_jobs = state.get("valid_jobs", [])
+        threshold: float = state.get("score_threshold", 0.6)
         shortlisted_jobs = []
         rejected_jobs = []  # New list to track rejections
 
@@ -84,7 +85,7 @@ class OrchestratorAgent:
             rating = await self.judge.ainvoke(prompt)
 
             # 3. Decision Step: Add to shortlist if it's a strong match
-            if rating.score >= 0.6:
+            if rating.score >= threshold:
                 job.match_score = rating.score
                 job.analysis = rating.reasoning
                 shortlisted_jobs.append(job)
@@ -93,7 +94,7 @@ class OrchestratorAgent:
             else:
                 rejected_jobs.append(job)  # Add to rejected list
                 logger.info(
-                    f"❌ Match rejected. Score ({rating.score}) below threshold (0.6)."
+                    f"❌ Match rejected. Score ({rating.score}) below threshold ({threshold})."
                 )
                 logger.debug(f"[ORCHESTRATOR] Reasoning: {rating.reasoning}")
 

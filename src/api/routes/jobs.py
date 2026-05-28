@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_current_user, get_db
 from src.api.schemas import GetJobsResponse, JobListItemResponse
-from src.db import User, JobRepository
+from src.db import User
+from src.db.repositories import JobRepository
 
 router = APIRouter(prefix="/api", tags=["jobs"])
 
@@ -88,3 +89,31 @@ async def get_jobs(
     return GetJobsResponse(
         page=clamped_page, total_count=total_count, page_size=page_size, jobs=jobs_list
     )
+
+
+@router.delete("/jobs/{job_id}", status_code=204)
+async def delete_job(
+    job_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete a single job owned by the authenticated user."""
+    user_id = cast(UUID, user.id)
+    deleted = await JobRepository.delete_by_id(session, job_id, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Job not found")
+    await session.commit()
+    logger.info(f"DELETE /jobs/{job_id} by {user.email}")
+
+
+@router.delete("/jobs", status_code=200)
+async def delete_all_jobs(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """Delete all jobs for the authenticated user."""
+    user_id = cast(UUID, user.id)
+    count = await JobRepository.delete_all_by_user(session, user_id)
+    await session.commit()
+    logger.info(f"DELETE /jobs (all) by {user.email}: {count} deleted")
+    return {"deleted": count}

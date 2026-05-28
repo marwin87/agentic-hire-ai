@@ -13,7 +13,7 @@ from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db, get_current_user
-from src.api.schemas import UploadCVResponse
+from src.api.schemas import UploadCVResponse, CVStatusResponse
 from src.config.settings import config
 from src.db import User, CVFile
 from src.db.repositories import CVEmbeddingRepository, CVFileRepository
@@ -30,6 +30,20 @@ async def calculate_file_hash(content: bytes) -> str:
     sha256_hash = hashlib.sha256()
     sha256_hash.update(content)
     return sha256_hash.hexdigest()
+
+
+@router.get("/cv/status", response_model=CVStatusResponse)
+async def cv_status(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Return whether the authenticated user has an uploaded CV."""
+    user_id_val = cast(UUID, user.id)
+    cv_file = await CVFileRepository.get_latest_by_user(db, user_id_val)
+    if cv_file is None:
+        return {"has_cv": False, "filename": None}
+    filename = Path(cv_file.file_path).name
+    return {"has_cv": True, "filename": filename}
 
 
 @router.post("/upload_cv", response_model=UploadCVResponse)

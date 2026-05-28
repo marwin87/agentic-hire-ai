@@ -128,6 +128,13 @@ class UploadCVResponse(BaseModel):
     status: str = Field(..., description="Upload status ('success' or error code)")
 
 
+class CVStatusResponse(BaseModel):
+    """Response model for GET /api/cv/status endpoint."""
+
+    has_cv: bool = Field(..., description="True if the user has an uploaded CV")
+    filename: Optional[str] = Field(None, description="Original filename if CV exists")
+
+
 # Orchestrate endpoint schemas
 
 
@@ -213,6 +220,36 @@ class OrchestrateResponse(BaseModel):
     status: str = Field(..., description="Overall operation status message")
     error_count: int = Field(
         ..., description="Number of jobs that failed orchestration/tailor"
+    )
+
+
+class WorkflowStreamEvent(BaseModel):
+    """SSE event emitted per-node during streaming workflow execution.
+
+    Each event corresponds to one LangGraph node completing. The final event
+    uses node='workflow' and carries a serialized OrchestrateResponse in data.
+    """
+
+    node: str = Field(
+        ...,
+        description=(
+            "LangGraph node name ('scout', 'validate_jobs', 'orchestrator', 'tailor') "
+            "or 'workflow' for the final completion event"
+        ),
+    )
+    status: str = Field(
+        ...,
+        description="'complete' for normal node completion or 'error' for failures",
+    )
+    data: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Node-specific summary: scout→{jobs_found, scout_run}, "
+            "validate_jobs→{jobs_valid, jobs_rejected}, "
+            "orchestrator→{jobs_shortlisted}, tailor→{evaluations}. "
+            "workflow completion→serialized OrchestrateResponse. "
+            "error→{message}."
+        ),
     )
 
 
