@@ -37,8 +37,7 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy source code
 COPY src/ ./src/
-COPY main.py ui.py ./
-COPY ui/ ./ui/
+COPY main.py ./
 
 # Copy database migrations
 COPY alembic.ini ./
@@ -56,8 +55,6 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Expose both Streamlit and FastAPI ports
-EXPOSE 8501 8000
+EXPOSE 8000
 
-# Default to Streamlit (can be overridden by docker-compose)
-CMD ["streamlit", "run", "ui.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

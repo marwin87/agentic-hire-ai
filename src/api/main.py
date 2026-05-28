@@ -2,11 +2,10 @@
 
 from contextlib import asynccontextmanager
 from typing import Any
-from pathlib import Path
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from loguru import logger
 
 from src.agents.agents import get_agent_factory
@@ -18,9 +17,8 @@ from src.api.routes import (
     workflows,
     jobs,
 )
-from src.api.dependencies import get_current_user
 from src.config.settings import config
-from src.db import init_db, close_db, User
+from src.db import init_db, close_db
 
 
 @asynccontextmanager
@@ -59,7 +57,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://localhost:8501",
         "http://localhost:8000",
     ],  # Whitelist trusted origins
     allow_credentials=True,
@@ -102,30 +99,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 async def health_check() -> dict[str, str]:
     """Health check endpoint for container orchestration and monitoring."""
     return {"status": "ok"}
-
-
-@app.get("/")
-async def root() -> FileResponse:
-    """Serve auth.html at root path."""
-    auth_html = Path(__file__).parent.parent.parent / "ui" / "auth.html"
-    return FileResponse(auth_html, media_type="text/html")
-
-
-@app.get("/dashboard")
-async def dashboard_page() -> FileResponse:
-    """Serve dashboard.html for authenticated users."""
-    dashboard_html = Path(__file__).parent.parent.parent / "ui" / "dashboard.html"
-    return FileResponse(dashboard_html, media_type="text/html")
-
-
-@app.get("/api/dashboard")
-async def get_dashboard(user: User = Depends(get_current_user)) -> dict[str, Any]:
-    """API endpoint — returns user information for authenticated users."""
-    return {
-        "message": f"Welcome, {user.email}!",
-        "user_id": str(user.id),
-        "email": user.email,
-    }
 
 
 # Register route routers

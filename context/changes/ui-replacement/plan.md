@@ -698,9 +698,9 @@ Backend changes in Phase 1 are covered by the existing pytest suite (`uv run pyt
 
 #### Manual
 
-- [ ] 2.3 Login redirects to dashboard; unauthenticated access to `/dashboard` redirects to `/login`
-- [ ] 2.4 Signup creates account; logout clears session
-- [ ] 2.5 CV upload returns chunk count on success
+- [x] 2.3 Login redirects to dashboard; unauthenticated access to `/dashboard` redirects to `/login`
+- [x] 2.4 Signup creates account; logout clears session
+- [x] 2.5 CV upload returns chunk count on success
 
 ### Phase 3: SSE Client Hook + Tile Data Model
 
@@ -711,9 +711,9 @@ Backend changes in Phase 1 are covered by the existing pytest suite (`uv run pyt
 
 #### Manual
 
-- [ ] 3.3 Dashboard shows conversation feed (all agents visible, "pending" agents hidden until active)
-- [ ] 3.4 Agent bubbles appear as SSE events arrive: thinking dots → checkmark with summary
-- [ ] 3.5 Network tab shows `text/event-stream` response to `/api/workflow/stream`
+- [x] 3.3 Dashboard shows conversation feed (all agents visible, "pending" agents hidden until active)
+- [x] 3.4 Agent bubbles appear as SSE events arrive: thinking dots → checkmark with summary
+- [x] 3.5 Network tab shows `text/event-stream` response to `/api/workflow/stream`
 
 ### Phase 4: Tile Animation + Error States + Results View
 
@@ -724,21 +724,21 @@ Backend changes in Phase 1 are covered by the existing pytest suite (`uv run pyt
 
 #### Manual
 
-- [ ] 4.3 Running state shows animated pulse; completed state fills tile with result summary
-- [ ] 4.4 Agent avatars appear in each tile
-- [ ] 4.5 Error state (red tile + message) triggers on pipeline failure
-- [ ] 4.6 Results panel shows shortlisted jobs after final event
+- [x] 4.3 Running state shows animated pulse; completed state fills tile with result summary
+- [x] 4.4 Agent avatars appear in each tile
+- [x] 4.5 Error state (red tile + message) triggers on pipeline failure
+- [x] 4.6 Results panel shows shortlisted jobs after final event
 
 ### Phase 5: Docker Integration + CI + Cleanup
 
 #### Automated
 
-- [ ] 5.1 `docker compose build` exits 0
-- [ ] 5.2 `docker compose up -d --wait` brings all 3 services healthy
-- [ ] 5.3 `curl -f http://localhost:3000` returns 200
-- [ ] 5.4 `uv run black --check src/ tests/ main.py` exits 0
-- [ ] 5.5 `uv run pytest tests/ -v --ignore=tests/integration` exits 0
-- [ ] 5.6 `cd frontend && npm run type-check` exits 0
+- [x] 5.1 `docker compose build` exits 0
+- [x] 5.2 `docker compose up -d --wait` brings all 3 services healthy
+- [x] 5.3 `curl -f http://localhost:3000` returns 200
+- [x] 5.4 `uv run black --check src/ tests/ main.py` exits 0
+- [x] 5.5 `uv run pytest tests/ -v --ignore=tests/integration` exits 0
+- [x] 5.6 `cd frontend && npm run type-check` exits 0
 - [ ] 5.7 CI pipeline passes
 
 #### Manual
