@@ -1,295 +1,281 @@
-# 🧠 AgenticHire AI
-
-![AgenticHire AI UI Example](ui/images/ui_example.jpg)
+# AgenticHire AI
 
 An AI-powered agent system that autonomously searches, validates, evaluates, and tailors job applications using a multi-agent LangGraph architecture combined with RAG and Vision-based CV understanding.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-The project leverages a modern and robust tech stack to deliver its AI-powered capabilities:
-
--   **Orchestration:** [LangGraph](https://langchain-ai.github.io/langgraph/) for building stateful, multi-agent applications.
--   **Programming Language:** Python
--   **AI/ML:**
-    -   Large Language Models (LLMs) for reasoning, validation, and content generation (e.g., via [OpenRouter](https://openrouter.ai/), OpenAI, Anthropic).
-    -   Vision LLMs for multimodal CV understanding.
-    -   Retrieval-Augmented Generation (RAG) for semantic context.
--   **Vector Database:** [ChromaDB](https://www.chromadb.com/) for efficient storage and retrieval of embeddings.
--   **Web Framework:** [Streamlit](https://streamlit.io/) for the interactive user interface.
--   **Dependency Management:** [uv](https://github.com/astral-sh/uv) for fast and reliable package management.
--   **External Integrations:**
-    -   [OrioSearch](https://www.oriosearch.org/) for job search APIs.
-    -   Various web scraping and search engine APIs (e.g., Tavily, Google).
+| Layer | Technology |
+|---|---|
+| **Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) |
+| **Backend API** | FastAPI (async, JWT auth) |
+| **Frontend** | Next.js 16 (App Router, TypeScript) |
+| **Database** | PostgreSQL 17 + pgvector |
+| **LLMs / Vision** | OpenRouter (OpenAI, Google, Anthropic models) |
+| **RAG** | pgvector embeddings stored in PostgreSQL |
+| **PDF Processing** | pdf2image + Vision LLM OCR pipeline |
+| **Dependency Management** | uv (Python), npm (Node.js) |
+| **Job Discovery** | [OrioSearch](https://www.oriosearch.org/) |
 
 ---
 
-## 🔑 Key Features
+## Key Features
 
-### 🔎 Autonomous Job Discovery
-The system uses a Scout Agent to search and scrape job postings from external sources using search and scraping tools.
+### Autonomous Job Discovery
+A Scout Agent searches and scrapes job postings from external sources using search and scraping tools, with deduplication across retry cycles.
 
----
+### Job Validation Layer
+Every discovered job is validated before further processing: checks URL reachability, detects expired/closed postings via LLM, and limits results to a configurable target count.
 
-### 🧹 Job Validation Layer
-Every discovered job is validated before further processing:
-- Checks if the job URL is reachable
-- Detects expired or closed job postings using an LLM
-- Limits number of valid jobs for efficiency
+### Controlled Agent Loop
+A safe retry mechanism tracks scout run counts and seen job URLs, re-running search if not enough valid jobs are found, stopping after configurable limits.
 
----
+### Orchestrator (Matchmaker)
+Evaluates job suitability using RAG-retrieved CV context, LLM-based scoring (0.0–1.0), and a configurable score threshold for shortlisting.
 
-### 🔁 Controlled Agent Loop
-A safe retry mechanism ensures the system does not loop infinitely:
-- Tracks number of scout runs
-- Re-runs search if not enough valid jobs are found
-- Stops after reaching defined limits
+### Vision-Based CV Understanding
+Instead of fragile PDF text extraction, the system uses a Vision LLM pipeline:
 
----
-
-### 🧠 Orchestrator (Matchmaker)
-The Orchestrator evaluates job suitability using:
-- CV context retrieval (RAG)
-- LLM-based scoring (0.0 → 1.0)
-- Shortlisting only strong matches
-
----
-
-### 📚 RAG (Retrieval-Augmented Generation)
-The system retrieves relevant CV knowledge before evaluating jobs:
-- Matches job description with candidate experience
-- Improves scoring accuracy using semantic context
-
----
-
-### 👁️ Vision-Based CV Understanding (Multimodal Pipeline)
-
-Instead of relying on broken PDF text extraction, the system uses a Vision LLM pipeline:
-
-PDF → Images → Vision LLM → Clean Text → Chunking → Embeddings → ChromaDB
-
-This allows:
-- Accurate CV parsing from any PDF layout
-- Better extraction of skills and experience
-- Stronger semantic matching in RAG
-
----
-
-### ✍️ Tailor Agent
-Generates final application insights:
-- Evaluates whether a job is worth applying to
-- Uses orchestrator reasoning + CV context
-- Produces a concise decision per job
-
----
-
-### 🖥️ Interactive User Interface (Streamlit)
-Provides a clean, intuitive web interface to:
-- Input search parameters and candidate profiles easily
-- Visualize the agentic workflow and decision-making process
-- Review shortlisted jobs, RAG scores, and tailored application strategies
-
----
-
-## 🏗️ Architecture Overview (ASCII)
 ```
-╔════════════════════════════════════════════════════════════╗
-║                       ENTRY POINT                          ║
-╠════════════════════════════════════════════════════════════╣
-║           ui.py (Streamlit UI)  &  main.py (CLI)           ║
-╚═══════════════════════════════╦════════════════════════════╝
-                                ║
-                                ▼
-
-╔════════════════════════════════════════════════════════════╗
-║                   LANGGRAPH ORCHESTRATION                  ║
-╠════════════════════════════════════════════════════════════╣
-
-    ┌────────────────────────────┐
-    │        SCOUT AGENT         │
-    │ - Job search               │
-    │ - Web scraping             │
-    └─────────────┬──────────────┘
-                  │
-                  ▼
-
-    ┌────────────────────────────┐
-    │     VALIDATE JOBS NODE     │
-    │ - URL health check         │
-    │ - Expiration detection     │
-    │ - Limit results            │
-    └─────────────┬──────────────┘
-                  │
-                  ▼
-
-    ┌────────────────────────────┐
-    │   should_rescout()         │
-    ├──────────────┬─────────────┤
-    │ rescout      │ proceed     │ end
-    ▼              ▼             ▼
- SCOUT     ┌──────────────┐     END
-           │ ORCHESTRATOR │
-           │ (MATCHMAKER) │
-           └──────┬───────┘
-                  │
-                  ▼
-
-    ┌────────────────────────────┐
-    │        RAG LAYER           │
-    │ - CV semantic retrieval    │
-    └─────────────┬──────────────┘
-                  │
-                  ▼
-
-    ┌────────────────────────────┐
-    │       TAILOR AGENT         │
-    │ - Final evaluation text    │
-    └─────────────┬──────────────┘
-                  ▼
-                 END
-
-╚════════════════════════════════════════════════════════════╝
-
-
-╔════════════════════════════════════════════════════════════╗
-║                         TOOLS LAYER                        ║
-╠════════════════════════════════════════════════════════════╣
-║ • job_search_tool                                          ║
-║ • scrape_webpage_tool                                      ║
-║ • job_validator (HTTP + LLM)                               ║
-║ • vectordb (RAG retrieval)                                 ║
-╚════════════════════════════════════════════════════════════╝
-
-
-╔════════════════════════════════════════════════════════════╗
-║                    EXTERNAL DEPENDENCIES                   ║
-╠════════════════════════════════════════════════════════════╣
-║ • Job Websites / APIs (OrioSearch)                         ║
-║ • Vector Database (ChromaDB)                               ║
-║ • Local Resume PDFs                                        ║
-╚════════════════════════════════════════════════════════════╝
+PDF → Images → Vision LLM → Clean Text → Chunking → Embeddings → PostgreSQL/pgvector
 ```
 
-## ⚙️ Project Structure
-The project follows a modular architecture designed for scalability and clear separation of concerns between the LangGraph orchestration and the individual AI Agents.
+### Tailor Agent
+Generates a concise final evaluation per shortlisted job using orchestrator reasoning and CV context.
+
+### Next.js Web UI
+Full-featured web interface with:
+- JWT-based authentication (sign up, login, sign out)
+- CV upload with persistence across sessions
+- Real-time agent workflow with streaming SSE tiles
+- Configurable score threshold per search
+- Job history page with per-job delete and clear-all
+
+---
+
+## Architecture
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║                        ENTRY POINTS                          ║
+╠══════════════════════════════════════════════════════════════╣
+║   Next.js UI (port 3000)          main.py (CLI)              ║
+╚═══════════════════════╦══════════════════════════════════════╝
+                        ║  HTTP / SSE
+                        ▼
+╔══════════════════════════════════════════════════════════════╗
+║                    FastAPI (port 8000)                        ║
+║  /auth  /cv  /workflows/stream  /api/jobs                    ║
+╚═══════════════════════╦══════════════════════════════════════╝
+                        ║
+                        ▼
+╔══════════════════════════════════════════════════════════════╗
+║                  LANGGRAPH WORKFLOW                           ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║   ┌─────────────┐     ┌──────────────────┐                  ║
+║   │ SCOUT AGENT │────▶│ VALIDATE JOBS    │                  ║
+║   │ job search  │     │ URL + LLM check  │                  ║
+║   │ scraping    │◀────│ should_rescout() │                  ║
+║   └─────────────┘     └────────┬─────────┘                  ║
+║                                │ proceed                     ║
+║                                ▼                             ║
+║                       ┌─────────────────┐                   ║
+║                       │  ORCHESTRATOR   │                   ║
+║                       │  RAG scoring    │                   ║
+║                       │  (0.0 → 1.0)    │                   ║
+║                       └────────┬────────┘                   ║
+║                                │                             ║
+║                                ▼                             ║
+║                       ┌─────────────────┐                   ║
+║                       │  TAILOR AGENT   │                   ║
+║                       │  final eval     │                   ║
+║                       └────────┬────────┘                   ║
+║                                ▼ END                         ║
+╚══════════════════════════════════════════════════════════════╝
+                        ║
+                        ▼
+╔══════════════════════════════════════════════════════════════╗
+║                      PERSISTENCE                             ║
+╠══════════════════════════════════════════════════════════════╣
+║  PostgreSQL 17 + pgvector                                    ║
+║  • users, cv_files, jobs tables                              ║
+║  • CV embeddings via pgvector                                ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## Project Structure
+
 ```
 agentic-hire-ai/
-├── data/                    # Local storage for source files (PDF resumes) and ChromaDB persistent data.
 ├── src/
-│   ├── config/              # Logic for LangGraph nodes (The "Brains" of the system).
-│   │   ├── settings.py      # Main application configuration file.
-│   │   └── logging.py       # Logging configuration file.
-│   ├── agents/              # Logic for LangGraph nodes (The "Brains" of the system).
-│   │   ├── agents.py        # Core agent definitions and initialization.
-│   │   ├── orchestrator.py  # Matchmaker logic, decision making, and task planning.
-│   │   ├── scout.py         # Job fetching logic (Web Scraping / API integrations).
-│   │   └── tailor.py        # Content generation for personalized applications.
-│   ├── tools/               # Specialized utilities used by agents to interact with the world.
-│   │   ├── job_validator.py # Tool for validating fetched job requirements.
-│   │   ├── scrape.py        # Tool for scraping job descriptions from the web.
-│   │   ├── search.py        # Search engine API wrappers (e.g., Tavily, Google).
-│   │   └── vectordb.py      # Vector DB (RAG) integration for semantic resume matching.
-│   ├── schema/              # Data models and shared state definitions.
-│   │   └── state.py         # The TypedDict defining the LangGraph State.
-│   ├── debug_db.py          # Utility for debugging and inspecting the database.
-│   ├── graph.py             # The core LangGraph definition, node connections, and compilation.
-│   └── utils.py             # Helper functions (PDF parsing, text formatting, logging).
-├── .env                     # Environment variables and API keys (OpenAI, Anthropic, etc.).
-├── ui.py                    # Main entry point for the interactive Streamlit UI.
-└── main.py                  # Main entry point for the CLI application.
+│   ├── agents/
+│   │   ├── agents.py           # AgentFactory singleton
+│   │   ├── scout.py            # Job discovery agent
+│   │   ├── orchestrator.py     # Scoring/matching agent
+│   │   └── tailor.py           # Evaluation generation agent
+│   ├── tools/
+│   │   ├── search.py           # job_search_tool (OrioSearch)
+│   │   ├── scrape.py           # scrape_webpage_tool (BeautifulSoup)
+│   │   ├── job_validator.py    # HTTP + LLM expiration check
+│   │   └── vectordb.py         # CVVectorManager (PDF→embeddings→pgvector)
+│   ├── api/
+│   │   ├── main.py             # FastAPI app, CORS, lifespan
+│   │   └── routes/
+│   │       ├── auth.py         # /signup, /login, /logout
+│   │       ├── cv.py           # /api/cv/upload, /api/cv/status
+│   │       ├── workflows.py    # /api/workflows/stream (SSE)
+│   │       ├── jobs.py         # /api/jobs (list, delete)
+│   │       ├── search.py       # /api/search
+│   │       └── validation.py   # /api/validation
+│   ├── db/
+│   │   ├── models.py           # SQLAlchemy ORM models
+│   │   ├── repositories.py     # Async repository pattern
+│   │   └── __init__.py         # init_db / close_db
+│   ├── schema/
+│   │   └── state.py            # AgenticHireState TypedDict + JobOffer model
+│   ├── config/
+│   │   ├── settings.py         # AppConfig via pydantic-settings
+│   │   └── logging.py          # loguru setup
+│   └── graph.py                # LangGraph definition + conditional logic
+├── frontend/                   # Next.js 16 App Router
+│   ├── app/
+│   │   ├── dashboard/          # Main workflow page + jobs history
+│   │   ├── login/              # Auth pages
+│   │   ├── signup/
+│   │   └── api/                # Proxy route handlers
+│   ├── components/             # Shared UI components
+│   ├── hooks/                  # useWorkflowStream, useCvUpload
+│   ├── Dockerfile
+│   └── docker-entrypoint.sh
+├── main.py                     # CLI entry point
+├── Dockerfile                  # API multi-stage build
+├── docker-compose.yml          # db + api + frontend services
+├── data/
+│   └── cv/                     # PDF resume storage
+└── pyproject.toml
 ```
 
 ---
 
 ## Getting Started
 
-This project uses [uv](https://github.com/astral-sh/uv) for blazing-fast Python dependency and environment management.
+### Option A — Docker (recommended)
 
-### 1. Install `uv`
-If you do not have `uv` installed, you can install it globally via pip:
+Requires Docker Desktop. All services (PostgreSQL, API, frontend) start together.
+
 ```bash
-pip install uv
+# 1. Copy and fill in required env vars
+cp .env.example .env
+# Edit .env: set AGENTIC_HIRE_OPENROUTER_API_KEY and AGENTIC_HIRE_JWT_SECRET_KEY
+
+# 2. Start everything
+docker compose up
+
+# Frontend:  http://localhost:3000
+# API:       http://localhost:8001
 ```
-*(Alternatively, use the standalone installer from their official documentation).*
 
-### 2. Sync the Environment
-Once cloned, navigate to the project directory and run:
+**Stop:**
 ```bash
+docker compose down
+```
+
+**Wipe data (including database):**
+```bash
+docker compose down -v
+```
+
+### Option B — Local development
+
+**Prerequisites:** Python 3.13+, Node.js 20+, PostgreSQL 17 with pgvector, uv
+
+```bash
+# Python dependencies
 uv sync
-```
-This command will automatically create a virtual environment (`.venv`) and install all required dependencies listed in the `pyproject.toml` and `uv.lock` files.
 
-### 3. Install `OrioSearch`
-Check how-to: https://www.oriosearch.org
+# Node dependencies
+cd frontend && npm ci && cd ..
 
-### 4. Create `.env` file
-Create a .env file in the root directory of the project and store your configuration and API keys there:
-```
-OPENROUTER_API_KEY="YOUR_API_KEY"
-ORIOSEARCH_BASE_URL="http://localhost:8000"
-```
+# Copy and configure env
+cp .env.example .env
 
-### 5. Customize Configuration (Optional)
-All system constants (e.g., model names, limits, prompts) are centralized in `src/config.py`. You can override defaults via environment variables (prefixed with `AGENTIC_HIRE_`) or by editing the file directly. For example:
-```
-AGENTIC_HIRE_MAX_VALID_OFFERS=10
-AGENTIC_HIRE_INITIAL_PROMPT="Your custom prompt here"
+# Run database migrations
+uv run alembic upgrade head
+
+# Start API (terminal 1)
+uv run uvicorn src.api.main:app --reload --port 8001
+
+# Start frontend (terminal 2)
+cd frontend && npm run dev
+# Open http://localhost:3000
 ```
 
+### CLI mode
 
-### 6. Run the Application
-You can run AgenticHire AI using the interactive user interface or the command line:
-
-Run the Streamlit UI:
-```bash
-uv run streamlit run ui.py
-```
-
-Run the CLI:
 ```bash
 uv run python main.py
 ```
 
 ---
 
-## 🐳 Docker Setup (Alternative)
+## Configuration
 
-For a containerized setup without installing Python locally, use Docker Compose:
+All settings live in `src/config/settings.py` (class `AppConfig`). Override via `.env` (highest priority) or environment variables prefixed `AGENTIC_HIRE_`.
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop) or Docker + Docker Compose installed
+**Required keys:**
 
-### Quick Start
-```bash
-# Clone the repo and navigate to it
-git clone <repo-url>
-cd agentic-hire-ai
+| Variable | Description |
+|---|---|
+| `AGENTIC_HIRE_OPENROUTER_API_KEY` | API key for LLM access via OpenRouter |
+| `AGENTIC_HIRE_JWT_SECRET_KEY` | JWT signing secret (generate: `python -c 'import secrets; print(secrets.token_urlsafe(32))'`) |
+| `AGENTIC_HIRE_DATABASE_URL` | PostgreSQL connection string (`postgresql+asyncpg://...`) |
 
-# Build and start the application
-docker-compose up
+**Optional keys:**
 
-# The app will be available at http://localhost:8501
-```
-
-**First run**: Docker will build the image. Subsequent runs will use the cached image and start instantly.
-
-**Stop the application**:
-```bash
-docker-compose down
-```
-
-**Data persistence**: ChromaDB embeddings are stored in a named Docker volume (`chroma_db`) and persist across restarts. To delete everything including data:
-```bash
-docker-compose down -v
-```
-
-For comprehensive Docker guidance (development workflow, debugging, resource limits, Phase 1 FastAPI setup), see [`context/foundation/docker-practices.md`](context/foundation/docker-practices.md).
+| Variable | Default | Description |
+|---|---|---|
+| `AGENTIC_HIRE_ORIOSEARCH_BASE_URL` | `http://localhost:8000` | OrioSearch job discovery service |
+| `AGENTIC_HIRE_MAX_VALID_OFFERS` | `1` | Target number of jobs per workflow run |
+| `AGENTIC_HIRE_MAX_SCOUT_RUNS` | `5` | Maximum rescout attempts |
+| `AGENTIC_HIRE_LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `ERROR`) |
+| `AGENTIC_HIRE_ENVIRONMENT` | `development` | `development` enables auto-reload |
 
 ---
 
-## 📄 License
+## Development
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+### Run tests
+```bash
+uv run pytest
+uv run pytest tests/test_graph.py -v          # single file
+uv run pytest tests/test_graph.py::test_name  # single test
 ```
+
+### Type check & lint
+```bash
+uv run mypy src/
+uv run black src/ tests/ main.py
+cd frontend && npm run type-check
+```
+
+### Database migrations
+```bash
+uv run alembic upgrade head       # apply migrations
+uv run alembic revision --autogenerate -m "description"  # create new migration
+```
+
+---
+
+## OrioSearch
+
+The Scout Agent requires a locally running [OrioSearch](https://www.oriosearch.org/) instance for job discovery. Start it on port 8000 before running the workflow. When using Docker Compose, the API container reaches it via `host.docker.internal:8000`.
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
