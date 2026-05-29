@@ -13,3 +13,13 @@
 - Critical errors (connectivity, auth, system state) → log, rollback, and re-raise
 
 **Applies to**: Any endpoint that calls external services (LLM, database, vector store, job search APIs). Prevents masking real infrastructure failures as graceful degradation.
+
+## ContextVar propagation through async coroutine chains vs. spawned tasks
+
+**Context**: `src/utils/progress.py` + streaming endpoint in `src/api/routes/workflows.py`
+
+**Problem**: When using Python `ContextVar` to propagate state (e.g., a shared progress queue) to code running inside a framework like LangGraph, there's uncertainty about whether the framework dispatches work via direct `await` (inherits context) or `asyncio.create_task()` (copies context at creation time, safe if set before `create_task`) or a thread pool (loses context entirely).
+
+**Rule**: ContextVar values propagate correctly to any coroutine that is `await`-ed in the same task, and to tasks spawned with `asyncio.create_task()` IF the var was set before the task was created. They do NOT propagate across thread boundaries (e.g., `loop.run_in_executor`). Verify empirically when integrating with a new async framework.
+
+**Applies to**: Any module using ContextVar for implicit state propagation — logging context, progress queues, request IDs, tracing spans.

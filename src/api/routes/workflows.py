@@ -391,13 +391,18 @@ async def search_jobs_stream(
                     all_job_results.append(result)
                     shortlisted_results.append(result)
                 for job in acc["rejected_jobs"]:
+                    score = getattr(job, "match_score", 0.0)
+                    # Skip validation-rejected jobs (score == 0.0, never actually scored)
+                    # so they don't appear as "0% match" cards in the UI.
+                    if score == 0.0:
+                        continue
                     all_job_results.append(
                         OrchestrateJobResult(
                             id=job.id,
                             title=job.title,
                             company=job.company,
                             url=job.url,
-                            match_score=getattr(job, "match_score", 0.0),
+                            match_score=score,
                             analysis=getattr(job, "analysis", None),
                             evaluation=None,
                             error=None,
@@ -459,7 +464,12 @@ async def search_jobs_stream(
 
                 yield f"data: {WorkflowStreamEvent(node=node, status=status, data=data).model_dump_json()}\n\n"
         finally:
-            await task
+            if not task.done():
+                task.cancel()
+            try:
+                await asyncio.shield(task)
+            except (asyncio.CancelledError, Exception):
+                pass
 
     return StreamingResponse(
         event_generator(),

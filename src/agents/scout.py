@@ -251,7 +251,7 @@ class ScoutAgent:
                         messages.append(
                             ToolMessage(
                                 name="scrape_webpage_tool",
-                                tool_call_id=tool_id,
+                                tool_call_id=cast(str, tool_id),
                                 content=result_str,
                             )
                         )

@@ -135,7 +135,7 @@ export function useWorkflowStream() {
               finalResult: event.data as unknown as OrchestrateResponse,
               isStreaming: false,
             }));
-            return;
+            break;
           }
 
           setState((prev) => applyEvent(prev, event));

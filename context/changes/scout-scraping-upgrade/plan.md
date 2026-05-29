@@ -26,6 +26,19 @@ No tool tests exist in `tests/tools/` — the test suite covers only graph logic
 - `Dockerfile:24-61` — multi-stage build; `.venv` is copied from builder to runtime, but Playwright browser binaries (`~/.cache/ms-playwright/`) are NOT inside `.venv` — Chromium must be installed in the **runtime** stage explicitly
 - `context/foundation/lessons.md` — narrow exception types: `TimeoutError` and `Error` from Playwright are recoverable; bare `except Exception` must not be the sole catch
 
+## Addendum — Unplanned Scope Delivered in Same Commit
+
+The following work was discovered and implemented during the session beyond the original 4-phase plan. All items were explicitly discussed and approved:
+
+- **Live streaming UI** (`src/api/routes/workflows.py`, `frontend/hooks/useWorkflowStream.ts`, `frontend/app/dashboard/page.tsx`, `frontend/lib/workflow-types.ts`) — streaming endpoint refactored from flat `graph.astream()` to background task + asyncio.Queue; frontend tiles replaced with append-only per-run message log.
+- **Progress event queue** (`src/utils/progress.py`) — ContextVar-based queue so any agent can `await emit()` during execution; `src/utils.py` converted to `src/utils/` package.
+- **Preferred portals + pre-seed** (`src/config/settings.py`, `src/agents/scout.py`) — configurable portal list; pre-seed loop runs one targeted search per portal before the main LLM loop.
+- **Agent emit() calls** (`src/agents/orchestrator.py`, `src/agents/tailor.py`, `src/graph.py`) — live progress messages for each job scored/validated/tailored.
+- **OrioSearch search_depth** (`src/tools/search.py`) — added `"search_depth": "advanced"` to the OrioSearch payload.
+- **scout_max_iterations** raised from 3 → 10 (`src/config/settings.py`) — needed for two-stage follow-up capacity.
+
+---
+
 ## What We're NOT Doing
 
 - Portal-specific API integrations (justjoin.it API, nofluffjobs GraphQL) — potential follow-on

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, cast
 from playwright.async_api import (
     async_playwright,
@@ -6,6 +7,11 @@ from playwright.async_api import (
 )
 from langchain_core.tools import tool
 from loguru import logger
+
+# Cap concurrent Chromium instances — each launch costs ~150MB RAM and 1-2s startup.
+# Scout calls scrape sequentially today, but this guard protects against future
+# parallelisation or concurrent users exhausting system resources.
+_BROWSER_SEM = asyncio.Semaphore(3)
 
 _JOB_PATH_SIGNALS: list[str] = [
     "job",
@@ -119,7 +125,7 @@ async def scrape_webpage_tool(url: str) -> str:
     """
     logger.debug(f"[SCRAPE] Rendering page: {url}")
     try:
-        async with async_playwright() as p:
+        async with _BROWSER_SEM, async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             try:
                 page = await browser.new_page(user_agent=_USER_AGENT)
@@ -158,7 +164,7 @@ async def scrape_webpage_tool(url: str) -> str:
 
     except PlaywrightTimeoutError:
         logger.warning(f"[SCRAPE] Timeout after {_PAGE_TIMEOUT_MS}ms at {url}")
-        return f"Error: page timed out after 30s at {url}"
+        return f"Error: page timed out after {_PAGE_TIMEOUT_MS // 1000}s at {url}"
     except PlaywrightError as e:
         logger.warning(f"[SCRAPE] Playwright error at {url}: {e}")
         return f"Error: {e} at {url}"

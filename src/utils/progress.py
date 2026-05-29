@@ -23,4 +23,7 @@ async def emit(node: str, message: str) -> None:
 
 
 def set_progress_queue(q: asyncio.Queue[Any]) -> None:
+    # Call BEFORE asyncio.create_task() so the spawned task inherits this value
+    # in its context snapshot. Direct await-chains inherit it automatically.
+    # Does NOT propagate across thread boundaries (run_in_executor etc.).
     _queue_var.set(q)
