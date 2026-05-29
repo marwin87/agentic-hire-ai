@@ -1,10 +1,10 @@
 ---
 change_id: scout-scraping-upgrade
 title: Scout scraping upgrade
-status: impl_reviewed
+status: archived
 created: 2026-05-29
 updated: 2026-05-29
-archived_at: null
+archived_at: 2026-05-29T15:04:00Z
 ---
 
 ## Notes
