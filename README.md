@@ -17,13 +17,14 @@ An AI-powered agent system that autonomously searches, validates, evaluates, and
 | **PDF Processing** | pdf2image + Vision LLM OCR pipeline |
 | **Dependency Management** | uv (Python), npm (Node.js) |
 | **Job Discovery** | [OrioSearch](https://www.oriosearch.org/) |
+| **Web Scraping** | Playwright (headless Chromium, SPA rendering) |
 
 ---
 
 ## Key Features
 
 ### Autonomous Job Discovery
-A Scout Agent searches and scrapes job postings from external sources using search and scraping tools, with deduplication across retry cycles.
+A Scout Agent searches and scrapes job postings from external sources using search and scraping tools, with deduplication across retry cycles. The scraper uses Playwright (headless Chromium) to render JavaScript-heavy SPAs, extracts structured job data via Schema.org JSON-LD when available, and detects listing pages — returning individual job URLs for the agent to scrape one by one.
 
 ### Job Validation Layer
 Every discovered job is validated before further processing: checks URL reachability, detects expired/closed postings via LLM, and limits results to a configurable target count.
@@ -119,7 +120,7 @@ agentic-hire-ai/
 │   │   └── tailor.py           # Evaluation generation agent
 │   ├── tools/
 │   │   ├── search.py           # job_search_tool (OrioSearch)
-│   │   ├── scrape.py           # scrape_webpage_tool (BeautifulSoup)
+│   │   ├── scrape.py           # scrape_webpage_tool (Playwright + JSON-LD)
 │   │   ├── job_validator.py    # HTTP + LLM expiration check
 │   │   └── vectordb.py         # CVVectorManager (PDF→embeddings→pgvector)
 │   ├── api/
