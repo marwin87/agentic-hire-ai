@@ -1,5 +1,6 @@
 from src.schema.state import AgenticHireState, JobOffer
 from src.tools.vectordb import CVVectorManager
+from src.utils.progress import emit
 from pydantic import BaseModel, Field
 from loguru import logger
 from typing import Any
@@ -45,6 +46,7 @@ class OrchestratorAgent:
         logger.debug(f"Orchestrator evaluating {len(valid_jobs)} valid jobs.")
 
         for job in valid_jobs:
+            await emit("orchestrator", f"Scoring: {job.title} @ {job.company}")
             logger.info(
                 f"[ORCHESTRATOR] Analyzing job match: {job.title} at {job.company}..."
             )
@@ -89,10 +91,15 @@ class OrchestratorAgent:
                 job.match_score = rating.score
                 job.analysis = rating.reasoning
                 shortlisted_jobs.append(job)
+                await emit("orchestrator", f"  → {int(rating.score * 100)}% match ✅")
                 logger.info(f"✅ Match accepted! Score: {rating.score}")
                 logger.info(f"[ORCHESTRATOR] Reasoning: {rating.reasoning}")
             else:
-                rejected_jobs.append(job)  # Add to rejected list
+                rejected_jobs.append(job)
+                await emit(
+                    "orchestrator",
+                    f"  → {int(rating.score * 100)}% match ❌ (below threshold)",
+                )
                 logger.info(
                     f"❌ Match rejected. Score ({rating.score}) below threshold ({threshold})."
                 )

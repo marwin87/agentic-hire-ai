@@ -32,6 +32,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Playwright's Chromium browser BEFORE copying .venv so this layer is only
+# invalidated when the playwright version changes — not on every Python dep update.
+# Binaries land in ~/.cache/ms-playwright/ (independent of .venv).
+RUN pip install --no-cache-dir "playwright>=1.40.0" \
+    && playwright install --with-deps chromium \
+    && pip uninstall -y playwright
+
 # Copy only the virtual environment from builder (reduces image size ~60%)
 COPY --from=builder /app/.venv /app/.venv
 

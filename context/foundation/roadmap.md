@@ -270,6 +270,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Parked
 
+- **Evaluation persistence gap** — The `evaluations` table (`src/db/models.py:112-139`) exists with columns for `match_score`, `orchestrator_reasoning`, `tailor_summary` but is never populated. The unified workflow endpoint (`src/api/routes/workflows.py`) returns orchestrator scores and tailor summaries in the API response JSON only — if the client doesn't store them, they are lost. Fix: after `graph.ainvoke()` completes, iterate `shortlisted_jobs` and write one `Evaluation` row per job via `EvaluationRepository`. The "Discovered Jobs" frontend page (`frontend/app/dashboard/jobs/page.tsx`) would then be able to show match scores and summaries from the DB rather than relying solely on the live response. Why parked: S-06 was shipped without this; it is a polish/completeness item, not a blocker for current MVP use. Prerequisite for: surfacing evaluations in the jobs list (S-08 extension).
+
 - **Phase 2 (Human-in-the-Loop approval workflow)** — Why parked: Deferred pending Phase 1 completion. PRD §Success Criteria §Secondary.
 - **Phase 3 (Resume Tweak Agent)** — Why parked: Feature extension, not MVP infrastructure. PRD §Non-Goals.
 - **Cloud hosting, Kubernetes, serverless infrastructure** — Why parked: Local Docker Compose only for Phase 1. PRD §Non-Goals.

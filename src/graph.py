@@ -2,6 +2,7 @@ from langgraph.graph import StateGraph, END
 from src.schema.state import AgenticHireState
 from src.agents.agents import get_agent_factory  # Import the getter function
 from src.config.settings import config
+from src.utils.progress import emit
 from loguru import logger
 from typing import Any
 
@@ -88,11 +89,14 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
     validated_jobs_with_status = []
     rejected_jobs = []  # New list for invalid jobs
     for job in found_jobs:
+        await emit("validate_jobs", f"Checking: {job.title} @ {job.company}")
         is_valid = await factory.job_validator.is_job_valid(job)
         if is_valid:
             validated_jobs_with_status.append(job)
+            await emit("validate_jobs", f"  ✓ Active")
         else:
             rejected_jobs.append(job)  # Track as rejected
+            await emit("validate_jobs", f"  ✗ Inactive or expired")
 
     valid_jobs = validated_jobs_with_status
 
@@ -101,6 +105,16 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
 
     logger.info(
         f"[ORCHESTRATOR] Validation complete: {len(valid_jobs)} valid, {len(rejected_jobs)} rejected, {len(limited_jobs)} passed after limiting"
+    )
+    needs_more = len(limited_jobs) < max_offers
+    await emit(
+        "validate_jobs",
+        f"✓ {len(limited_jobs)} valid, {len(rejected_jobs)} rejected"
+        + (
+            f" — need {max_offers - len(limited_jobs)} more, rescouting..."
+            if needs_more
+            else ""
+        ),
     )
 
     return {

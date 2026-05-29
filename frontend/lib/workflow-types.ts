@@ -1,9 +1,12 @@
 export type NodeName = "scout" | "validate_jobs" | "orchestrator" | "tailor";
-export type TileStatus = "pending" | "running" | "complete" | "error";
+export type TileStatus = "running" | "complete" | "error";
 
-export interface TileData {
+export interface AgentMessageData {
+  id: string;
   node: NodeName;
+  runIndex: number;
   status: TileStatus;
+  logs: string[];
   summary: Record<string, unknown>;
   errorMessage?: string;
 }
@@ -28,18 +31,11 @@ export interface OrchestrateResponse {
 }
 
 export interface WorkflowState {
-  tiles: Record<NodeName, TileData>;
+  messages: AgentMessageData[];
   finalResult: OrchestrateResponse | null;
   error: string | null;
   isStreaming: boolean;
 }
-
-// Graph topology: which node becomes "running" after each node completes
-export const NEXT_NODE: Partial<Record<NodeName, NodeName>> = {
-  scout: "validate_jobs",
-  validate_jobs: "orchestrator",
-  orchestrator: "tailor",
-};
 
 export const NODE_ORDER: NodeName[] = [
   "scout",
@@ -49,12 +45,5 @@ export const NODE_ORDER: NodeName[] = [
 ];
 
 export function makeInitialState(): WorkflowState {
-  const tiles = NODE_ORDER.reduce(
-    (acc, node) => {
-      acc[node] = { node, status: "pending", summary: {} };
-      return acc;
-    },
-    {} as Record<NodeName, TileData>
-  );
-  return { tiles, finalResult: null, error: null, isStreaming: false };
+  return { messages: [], finalResult: null, error: null, isStreaming: false };
 }

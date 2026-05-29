@@ -14,7 +14,7 @@ async def job_search_tool(query: str) -> str:
     """
     logger.debug(f"[ORIO] Search Query: {query}")
     logger.debug(f"[ORIO] Connecting to: {config.oriosearch_base_url}")
-    payload: dict[str, str | int] = {"query": query, "num_results": 10}
+    payload: dict[str, str | int] = {"query": query, "num_results": 10, "search_depth": "advanced"}
 
     max_retries = 3
     retry_delay = 1  # Start with 1 second

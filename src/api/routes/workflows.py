@@ -1,5 +1,6 @@
 """Workflow endpoints - primary orchestration API."""
 
+import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import UUID
@@ -21,6 +22,7 @@ from src.api.vectordb_async import get_cv_context_async
 from src.db import User
 from src.graph import build_graph
 from src.schema.state import AgenticHireState
+from src.utils.progress import set_progress_queue
 
 router = APIRouter(prefix="/api", tags=["workflows"])
 
@@ -329,121 +331,135 @@ async def search_jobs_stream(
     }
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        # Accumulators for reconstructing the final OrchestrateResponse.
-        # Fields with operator.add annotation (found_jobs, rejected_jobs) accumulate
-        # across multiple node runs (e.g. rescout loop); others are overwritten.
-        accumulated_found_jobs: list[Any] = []
-        accumulated_rejected_jobs: list[Any] = []
-        last_valid_jobs: list[Any] = []
-        last_shortlisted_jobs: list[Any] = []
-        last_applications: dict[str, Any] = {}
+        # Single queue receives both progress log events (from agents via emit())
+        # and node-completion events (pushed by run_graph below).
+        q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        set_progress_queue(q)
+
+        # Accumulators — mutated inside run_graph via the shared dict.
+        acc: dict[str, Any] = {
+            "found_jobs": [],
+            "rejected_jobs": [],
+            "valid_jobs": [],
+            "shortlisted_jobs": [],
+            "applications": {},
+        }
+
+        async def run_graph() -> None:
+            try:
+                graph = build_graph()
+                logger.info("[STREAM] Starting graph.astream()")
+                async for event in graph.astream(initial_state, stream_mode="updates"):
+                    for node_name, node_update in event.items():
+                        logger.info(f"[STREAM] Node complete: {node_name}")
+                        if node_name == "scout":
+                            acc["found_jobs"] += node_update.get("found_jobs", [])
+                        elif node_name == "validate_jobs":
+                            acc["valid_jobs"] = node_update.get("valid_jobs", [])
+                            acc["rejected_jobs"] += node_update.get("rejected_jobs", [])
+                        elif node_name == "orchestrator":
+                            acc["shortlisted_jobs"] = node_update.get(
+                                "shortlisted_jobs", []
+                            )
+                            acc["rejected_jobs"] += node_update.get("rejected_jobs", [])
+                        elif node_name == "tailor":
+                            acc["applications"] = node_update.get("applications", {})
+                        summary = _extract_node_summary(node_name, node_update)
+                        await q.put(
+                            {
+                                "type": "node_complete",
+                                "node": node_name,
+                                "data": summary,
+                            }
+                        )
+
+                logger.info("[STREAM] Graph complete; building final response")
+                shortlisted_results: list[OrchestrateJobResult] = []
+                all_job_results: list[OrchestrateJobResult] = []
+                for job in acc["shortlisted_jobs"]:
+                    eval_data = acc["applications"].get(job.id, {})
+                    result = OrchestrateJobResult(
+                        id=job.id,
+                        title=job.title,
+                        company=job.company,
+                        url=job.url,
+                        match_score=job.match_score,
+                        analysis=job.analysis,
+                        evaluation=eval_data.get("founded_job_offer", ""),
+                        error=None,
+                    )
+                    all_job_results.append(result)
+                    shortlisted_results.append(result)
+                for job in acc["rejected_jobs"]:
+                    all_job_results.append(
+                        OrchestrateJobResult(
+                            id=job.id,
+                            title=job.title,
+                            company=job.company,
+                            url=job.url,
+                            match_score=getattr(job, "match_score", 0.0),
+                            analysis=getattr(job, "analysis", None),
+                            evaluation=None,
+                            error=None,
+                        )
+                    )
+                final_shortlisted = [
+                    j
+                    for j in shortlisted_results
+                    if j.match_score >= request.score_threshold
+                ]
+                final_rejected = [
+                    j
+                    for j in all_job_results
+                    if j.match_score < request.score_threshold
+                ]
+                final_response = OrchestrateResponse(
+                    all_jobs=all_job_results,
+                    shortlisted_jobs=final_shortlisted,
+                    rejected_jobs=final_rejected,
+                    status=f"Workflow complete: {len(final_shortlisted)} shortlisted, {len(final_rejected)} below threshold",
+                    error_count=0,
+                )
+                await q.put(
+                    {"type": "workflow_complete", "data": final_response.model_dump()}
+                )
+            except Exception as e:
+                logger.error(
+                    f"[STREAM] Graph failed: {type(e).__name__}: {repr(e)}",
+                    exc_info=True,
+                )
+                await q.put(
+                    {"type": "error", "node": "workflow", "data": {"message": str(e)}}
+                )
+            finally:
+                await q.put(None)  # sentinel — signals generator to stop
+
+        task = asyncio.create_task(run_graph())
 
         try:
-            graph = build_graph()
-            logger.info("[STREAM] Starting graph.astream()")
+            while True:
+                item = await q.get()
+                if item is None:
+                    break
+                item_type = item.get("type", "log")
+                node = item.get("node", "workflow")
+                data = item.get("data", {})
 
-            async for event in graph.astream(initial_state, stream_mode="updates"):
-                for node_name, node_update in event.items():
-                    logger.info(f"[STREAM] Node complete: {node_name}")
+                if item_type == "log":
+                    status = "log"
+                elif item_type == "node_complete":
+                    status = "complete"
+                elif item_type == "workflow_complete":
+                    node = "workflow"
+                    status = "complete"
+                elif item_type == "error":
+                    status = "error"
+                else:
+                    continue
 
-                    # Accumulate state for final response reconstruction
-                    if node_name == "scout":
-                        accumulated_found_jobs += node_update.get("found_jobs", [])
-                    elif node_name == "validate_jobs":
-                        last_valid_jobs = node_update.get("valid_jobs", [])
-                        accumulated_rejected_jobs += node_update.get(
-                            "rejected_jobs", []
-                        )
-                    elif node_name == "orchestrator":
-                        last_shortlisted_jobs = node_update.get("shortlisted_jobs", [])
-                        accumulated_rejected_jobs += node_update.get(
-                            "rejected_jobs", []
-                        )
-                    elif node_name == "tailor":
-                        last_applications = node_update.get("applications", {})
-
-                    summary = _extract_node_summary(node_name, node_update)
-                    stream_event = WorkflowStreamEvent(
-                        node=node_name,
-                        status="complete",
-                        data=summary,
-                    )
-                    yield f"data: {stream_event.model_dump_json()}\n\n"
-
-            logger.info(
-                "[STREAM] Graph execution complete; emitting workflow_complete event"
-            )
-
-            # Build final OrchestrateResponse using the same logic as the ainvoke endpoint
-            all_job_results: list[OrchestrateJobResult] = []
-            shortlisted_results: list[OrchestrateJobResult] = []
-
-            for job in last_shortlisted_jobs:
-                evaluation_data = last_applications.get(job.id, {})
-                evaluation = evaluation_data.get("founded_job_offer", "")
-                job_result = OrchestrateJobResult(
-                    id=job.id,
-                    title=job.title,
-                    company=job.company,
-                    url=job.url,
-                    match_score=job.match_score,
-                    analysis=job.analysis,
-                    evaluation=evaluation,
-                    error=None,
-                )
-                all_job_results.append(job_result)
-                shortlisted_results.append(job_result)
-
-            for job in accumulated_rejected_jobs:
-                job_result = OrchestrateJobResult(
-                    id=job.id,
-                    title=job.title,
-                    company=job.company,
-                    url=job.url,
-                    match_score=job.match_score if hasattr(job, "match_score") else 0.0,
-                    analysis=job.analysis if hasattr(job, "analysis") else None,
-                    evaluation=None,
-                    error=None,
-                )
-                all_job_results.append(job_result)
-
-            final_shortlisted = [
-                j
-                for j in shortlisted_results
-                if j.match_score >= request.score_threshold
-            ]
-            final_rejected = [
-                j for j in all_job_results if j.match_score < request.score_threshold
-            ]
-
-            final_response = OrchestrateResponse(
-                all_jobs=all_job_results,
-                shortlisted_jobs=final_shortlisted,
-                rejected_jobs=final_rejected,
-                status=(
-                    f"Workflow complete: {len(final_shortlisted)} shortlisted, "
-                    f"{len(final_rejected)} below threshold"
-                ),
-                error_count=0,
-            )
-            completion_event = WorkflowStreamEvent(
-                node="workflow",
-                status="complete",
-                data=final_response.model_dump(),
-            )
-            yield f"data: {completion_event.model_dump_json()}\n\n"
-
-        except Exception as e:
-            logger.error(
-                f"[STREAM] Graph execution failed: {type(e).__name__}: {repr(e)}",
-                exc_info=True,
-            )
-            error_event = WorkflowStreamEvent(
-                node="workflow",
-                status="error",
-                data={"message": str(e)},
-            )
-            yield f"data: {error_event.model_dump_json()}\n\n"
+                yield f"data: {WorkflowStreamEvent(node=node, status=status, data=data).model_dump_json()}\n\n"
+        finally:
+            await task
 
     return StreamingResponse(
         event_generator(),

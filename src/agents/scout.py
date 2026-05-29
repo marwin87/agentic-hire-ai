@@ -1,8 +1,10 @@
 import asyncio
 import urllib.parse
+import uuid
 from datetime import datetime
 from typing import Any, List, Optional, Set, cast
 from langchain_core.messages import (
+    AIMessage,
     HumanMessage,
     SystemMessage,
     ToolMessage,
@@ -12,6 +14,7 @@ from src.schema.state import AgenticHireState, JobOffer
 from src.tools.search import job_search_tool
 from src.tools.scrape import scrape_webpage_tool
 from src.utils import JobParser
+from src.utils.progress import emit
 from src.config.settings import config
 from loguru import logger
 
@@ -49,6 +52,11 @@ class ScoutAgent:
     ) -> dict[str, Any]:
         scout_runs = state.get("scout_runs", 0) + 1
         logger.info(f"--- [NODE] EXECUTING SCOUT AGENT (Run {scout_runs}) ---")
+        run_label = f"Run {scout_runs}" if scout_runs > 1 else ""
+        await emit(
+            "scout",
+            f"🔍 Scout starting{' (' + run_label + ')' if run_label else ''}...",
+        )
 
         resume_context = cv_context or state.get(
             "resume_context", "No resume context provided."
@@ -99,17 +107,24 @@ class ScoutAgent:
 
         current_date = datetime.now().strftime("%Y-%m-%d")
 
+        preferred_portals = config.preferred_job_portals
+        portals_list = "\n".join(f"  - {p}" for p in preferred_portals)
+
         system_msg = SystemMessage(
             content=(
                 "You are a professional Recruitment Scout. Your task is to find CONCRETE, ACTIVE job offers, not just search portal pages.\n"
                 f"Today's date is {current_date}. Use this to determine if a job posting is old or expired.\n"
+                f"PREFERRED PORTALS: Always search these portals first before exploring other sources:\n{portals_list}\n"
                 "PRIORITY RULES:\n"
                 "1. The “target_criteria” is the PRIMARY source of truth and MUST be strictly followed.\n"
                 "2. The CV is SECONDARY and should be used only to refine relevance (skills, experience level, technologies).\n"
                 "3. If there is any conflict between the CV and target_criteria, ALWAYS follow the target_criteria.\n"
                 "STEPS:\n"
                 "Step 1: Use the 'job_search_tool' to find job portals or specific job openings that match the candidate's CV. IMPORTANT: Do NOT restrict your search queries using 'site:' operators (e.g., site:linkedin.com). Search the broader web to find diverse opportunities across all company career pages and job boards.\n"
-                "Step 2: If the search returns a job portal or a list page, use the 'scrape_webpage_tool' to open that URL and find concrete job postings.\n"
+                "Step 2: Use the 'scrape_webpage_tool' to open URLs found in Step 1. Handle the result based on what it returns:\n"
+                "  - If the result contains job content (Title, Company, Description), proceed to Step 3.\n"
+                "  - If the result starts with 'JOB_LINKS:' followed by URLs (one per line), it found a listing page — call 'scrape_webpage_tool' on each of those URLs individually to retrieve the actual job content, then proceed to Step 3.\n"
+                "  - If the result starts with 'Error:', skip that URL and try the next one.\n"
                 "Step 3: IMPORTANT: Check the scraped content of each job offer for signs that it is expired, closed, or no longer accepting applications (e.g., 'offer expired', 'job is closed', 'position filled'). If it is expired, discard it and search for another one.\n"
                 "Step 4: Once you have identified valid, active jobs, write a comprehensive final message containing the exact Title, Company, FULL Description, and concrete URL for ONLY the approved active jobs. Do not mention or include discarded jobs in this final summary."
                 f"{search_variation}"
@@ -123,6 +138,42 @@ class ScoutAgent:
         )
 
         messages: List[BaseMessage] = [system_msg, human_msg]
+
+        # Pre-seed: run one targeted search per preferred portal so those domains
+        # are guaranteed to appear in the conversation regardless of what OrioSearch
+        # returns on its own. Injected as synthetic AIMessage+ToolMessage pairs so
+        # the LLM sees them as part of its own search history and follows up on any
+        # JOB_LINKS: responses in its main loop.
+        for portal_url in config.preferred_job_portals:
+            domain = urllib.parse.urlparse(portal_url).netloc
+            query = f"{target_criteria} {domain}"
+            logger.debug(f"[SCOUT] Pre-seeding portal search: {query}")
+            await emit("scout", f"Searching {domain}...")
+            try:
+                tool_call_id = uuid.uuid4().hex
+                search_result = await job_search_tool.ainvoke({"query": query})
+                messages.append(
+                    AIMessage(
+                        content="",
+                        tool_calls=[
+                            {
+                                "id": tool_call_id,
+                                "name": "job_search_tool",
+                                "args": {"query": query},
+                            }
+                        ],
+                    )
+                )
+                messages.append(
+                    ToolMessage(
+                        name="job_search_tool",
+                        tool_call_id=tool_call_id,
+                        content=str(search_result),
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"[SCOUT] Pre-seed search failed for {domain}: {e}")
+
         all_found_jobs: List[JobOffer] = []
 
         logger.info(
@@ -164,6 +215,12 @@ class ScoutAgent:
                     logger.debug(f"[SCOUT] Executing tool: {tool_name}")
 
                     if tool_name == "job_search_tool":
+                        query_str = (
+                            tool_args.get("query", "")
+                            if isinstance(tool_args, dict)
+                            else str(tool_args)
+                        )
+                        await emit("scout", f'Searching: "{query_str}"')
                         logger.debug(f"[SCOUT] job_search_tool args: {tool_args}")
                         raw_results = await job_search_tool.ainvoke(tool_args)
                         messages.append(
@@ -174,13 +231,28 @@ class ScoutAgent:
                             )
                         )
                     elif tool_name == "scrape_webpage_tool":
+                        url_str = (
+                            tool_args.get("url", "")
+                            if isinstance(tool_args, dict)
+                            else str(tool_args)
+                        )
+                        await emit("scout", f"Scraping: {url_str}")
                         logger.debug(f"[SCOUT] scrape_webpage_tool args: {tool_args}")
                         raw_results = await scrape_webpage_tool.ainvoke(tool_args)
+                        result_str = str(raw_results)
+                        if result_str.startswith("JOB_LINKS:"):
+                            n = len(result_str.strip().splitlines()) - 1
+                            await emit(
+                                "scout",
+                                f"  → Found {n} job links, scraping individually...",
+                            )
+                        elif result_str.startswith("Title:"):
+                            await emit("scout", "  → Job offer found ✓")
                         messages.append(
                             ToolMessage(
                                 name="scrape_webpage_tool",
                                 tool_call_id=tool_id,
-                                content=str(raw_results),
+                                content=result_str,
                             )
                         )
                     await asyncio.sleep(config.scout_rate_limit_delay)
@@ -274,6 +346,7 @@ class ScoutAgent:
         seen_jobs.update(new_seen)
 
         logger.info(f"[SCOUT] Found {len(all_found_jobs)} jobs.")
+        await emit("scout", f"✓ Found {len(all_found_jobs)} job offer(s)")
         return {
             "found_jobs": all_found_jobs,
             "scout_runs": scout_runs,

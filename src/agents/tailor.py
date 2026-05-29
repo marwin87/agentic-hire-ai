@@ -1,5 +1,6 @@
 from langchain_core.messages import SystemMessage, HumanMessage
 from src.schema.state import AgenticHireState
+from src.utils.progress import emit
 from urllib.parse import urlparse
 from loguru import logger
 from typing import Any
@@ -33,6 +34,7 @@ class TailorAgent:
         )
 
         for job in shortlisted_jobs:
+            await emit("tailor", f"Writing insight for: {job.title} @ {job.company}")
             logger.info(
                 f"[TAILOR] Generating application materials for: {job.title} at {job.company}..."
             )

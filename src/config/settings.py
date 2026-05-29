@@ -42,11 +42,23 @@ class AppConfig(BaseSettings):
         3, description="Maximum number of iterations for the job scout agent."
     )
     scout_max_iterations: int = Field(
-        3, description="Max LLM interaction iterations per scout run."
+        10, description="Max LLM interaction iterations per scout run."
     )
     scout_rate_limit_delay: float = Field(
         0.5,
         description="Delay (seconds) between scout tool calls to avoid rate limiting.",
+    )
+    preferred_job_portals: list[str] = Field(
+        default=[
+            "https://pracuj.pl",
+            "https://nofluffjobs.com/pl",
+            "https://justjoin.it/",
+            "https://linkedin.com",
+        ],
+        description=(
+            "Ordered list of job portals Scout should search first. "
+            "Override via AGENTIC_HIRE_PREFERRED_JOB_PORTALS env var as a JSON array."
+        ),
     )
     initial_prompt: str = Field(
         "Python Developer or AI Engineer roles. "

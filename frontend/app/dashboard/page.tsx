@@ -4,9 +4,8 @@ import {useEffect, useRef, useState} from "react";
 import Image from "next/image";
 import {useWorkflowStream} from "@/hooks/useWorkflowStream";
 import {
-    NODE_ORDER,
+    AgentMessageData,
     NodeName,
-    TileData,
     OrchestrateJobResult,
     OrchestrateResponse,
 } from "@/lib/workflow-types";
@@ -172,14 +171,14 @@ function CvUploadPanel({
 
 // ── Summary formatters ────────────────────────────────────────────────────────
 
-function formatSummary(node: NodeName, summary: Record<string, unknown>): string {
+function formatSummary(node: AgentMessageData["node"], summary: Record<string, unknown>): string {
     switch (node) {
         case "scout":
-            return `Found ${summary.jobs_found ?? 0} jobs (run #${summary.scout_run ?? 1})`;
+            return `Found ${summary.jobs_found ?? 0} jobs`;
         case "validate_jobs":
             return `${summary.jobs_valid ?? 0} valid · ${summary.jobs_rejected ?? 0} rejected`;
         case "orchestrator":
-            return `${summary.jobs_shortlisted ?? 0} jobs shortlisted above threshold`;
+            return `${summary.jobs_shortlisted ?? 0} shortlisted above threshold`;
         case "tailor":
             return `${summary.evaluations ?? 0} evaluations written`;
         default:
@@ -227,13 +226,12 @@ function ThinkingDots() {
 
 // ── Agent message bubble ──────────────────────────────────────────────────────
 
-function AgentMessage({tile, config}: { tile: TileData; config: AgentConfig }) {
-    if (tile.status === "pending") return null;
-
-    const isRunning = tile.status === "running";
-    const isError = tile.status === "error";
-    const isComplete = tile.status === "complete";
+function AgentMessage({message, config}: { message: AgentMessageData; config: AgentConfig }) {
+    const isRunning = message.status === "running";
+    const isError = message.status === "error";
+    const isComplete = message.status === "complete";
     const right = config.isSystem;
+    const label = message.runIndex > 1 ? `${config.label} (Run ${message.runIndex})` : config.label;
 
     const bubble = (
         <div
@@ -249,25 +247,38 @@ function AgentMessage({tile, config}: { tile: TileData; config: AgentConfig }) {
                             : "bg-white border border-gray-200 shadow-sm text-gray-800"
             }`}
         >
-            {isRunning && (
+            {/* Live log lines */}
+            {message.logs.length > 0 && (
+                <div className="space-y-0.5 mb-2 font-mono text-xs text-gray-600">
+                    {message.logs.map((line, i) => (
+                        <p key={i}>{line}</p>
+                    ))}
+                </div>
+            )}
+            {/* Thinking dots when running with no logs yet */}
+            {isRunning && message.logs.length === 0 && (
                 <span className="flex items-center gap-3">
-          <ThinkingDots/>
-          <span className="text-gray-400 text-xs">
-            {right ? "Checking…" : "Working…"}
-          </span>
-        </span>
+                    <ThinkingDots/>
+                    <span className="text-gray-400 text-xs">Working…</span>
+                </span>
+            )}
+            {/* Running indicator after logs appear */}
+            {isRunning && message.logs.length > 0 && (
+                <span className="flex items-center gap-1.5 mt-1">
+                    <ThinkingDots/>
+                </span>
             )}
             {isError && (
                 <span>
-          <span className="font-medium">Error: </span>
-                    {tile.errorMessage ?? "Something went wrong"}
-        </span>
+                    <span className="font-medium">Error: </span>
+                    {message.errorMessage ?? "Something went wrong"}
+                </span>
             )}
             {isComplete && (
-                <span className="flex items-center gap-2">
-          <span className="text-green-500 text-base leading-none">✓</span>
-          <span>{formatSummary(tile.node, tile.summary)}</span>
-        </span>
+                <span className="flex items-center gap-2 mt-1 text-xs font-medium">
+                    <span className="text-green-500">✓</span>
+                    <span>{formatSummary(message.node, message.summary)}</span>
+                </span>
             )}
         </div>
     );
@@ -280,7 +291,7 @@ function AgentMessage({tile, config}: { tile: TileData; config: AgentConfig }) {
             <Avatar config={config} pulse={isRunning}/>
             <div className={`flex-1 min-w-0 ${right ? "flex flex-col items-end" : ""}`}>
                 <div className={`flex items-baseline gap-2 mb-1.5 ${right ? "flex-row-reverse" : ""}`}>
-                    <span className="text-sm font-semibold text-gray-800">{config.label}</span>
+                    <span className="text-sm font-semibold text-gray-800">{label}</span>
                     <span className="text-xs text-gray-400">{config.role}</span>
                 </div>
                 {bubble}
@@ -388,7 +399,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         feedRef.current?.scrollTo({top: feedRef.current.scrollHeight, behavior: "smooth"});
-    }, [state.tiles, state.finalResult]);
+    }, [state.messages, state.finalResult]);
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -396,7 +407,7 @@ export default function DashboardPage() {
         startWorkflow(criteria.trim(), parseFloat(threshold) || 0.6);
     }
 
-    const hasActivity = NODE_ORDER.some((n) => state.tiles[n].status !== "pending");
+    const hasActivity = state.messages.length > 0;
 
     return (
         <div className="flex flex-col gap-5 max-w-2xl mx-auto">
@@ -502,11 +513,11 @@ export default function DashboardPage() {
             {/* Conversation feed */}
             {hasActivity && (
                 <div ref={feedRef} className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
-                    {NODE_ORDER.map((node) => (
+                    {state.messages.map((msg) => (
                         <AgentMessage
-                            key={node}
-                            tile={state.tiles[node]}
-                            config={AGENT_CONFIGS[node]}
+                            key={msg.id}
+                            message={msg}
+                            config={AGENT_CONFIGS[msg.node]}
                         />
                     ))}
                     <ResultsPanel result={state.finalResult}/>
