@@ -65,7 +65,7 @@ Full-featured web interface with:
                         ║  HTTP / SSE
                         ▼
 ╔══════════════════════════════════════════════════════════════╗
-║                    FastAPI (port 8000)                        ║
+║                    FastAPI (port 8001)                        ║
 ║  /auth  /cv  /workflows/stream  /api/jobs                    ║
 ╚═══════════════════════╦══════════════════════════════════════╝
                         ║
@@ -124,6 +124,10 @@ agentic-hire-ai/
 │   │   └── vectordb.py         # CVVectorManager (PDF→embeddings→pgvector)
 │   ├── api/
 │   │   ├── main.py             # FastAPI app, CORS, lifespan
+│   │   ├── schemas.py          # Request/response Pydantic schemas
+│   │   ├── dependencies.py     # FastAPI dependency injection
+│   │   ├── middleware.py       # Request middleware
+│   │   ├── vectordb_async.py   # Async pgvector helpers
 │   │   └── routes/
 │   │       ├── auth.py         # /signup, /login, /logout
 │   │       ├── cv.py           # /api/cv/upload, /api/cv/status
@@ -131,15 +135,22 @@ agentic-hire-ai/
 │   │       ├── jobs.py         # /api/jobs (list, delete)
 │   │       ├── search.py       # /api/search
 │   │       └── validation.py   # /api/validation
+│   ├── auth/
+│   │   └── utils.py            # JWT helpers
 │   ├── db/
 │   │   ├── models.py           # SQLAlchemy ORM models
 │   │   ├── repositories.py     # Async repository pattern
-│   │   └── __init__.py         # init_db / close_db
+│   │   ├── database.py         # Engine, session factory, init_db/close_db
+│   │   ├── config.py           # DB-specific config
+│   │   └── __init__.py         # Re-exports init_db, close_db, repositories
 │   ├── schema/
-│   │   └── state.py            # AgenticHireState TypedDict + JobOffer model
+│   │   ├── state.py            # AgenticHireState TypedDict + JobOffer model
+│   │   └── validation.py       # Shared validation schemas
 │   ├── config/
 │   │   ├── settings.py         # AppConfig via pydantic-settings
 │   │   └── logging.py          # loguru setup
+│   ├── utils/
+│   │   └── progress.py         # Progress tracking utilities
 │   └── graph.py                # LangGraph definition + conditional logic
 ├── frontend/                   # Next.js 16 App Router
 │   ├── app/
@@ -151,9 +162,13 @@ agentic-hire-ai/
 │   ├── hooks/                  # useWorkflowStream, useCvUpload
 │   ├── Dockerfile
 │   └── docker-entrypoint.sh
+├── alembic/                    # Database migrations
+├── alembic.ini
 ├── main.py                     # CLI entry point
 ├── Dockerfile                  # API multi-stage build
 ├── docker-compose.yml          # db + api + frontend services
+├── docker-compose.dev.yml      # Local development overrides
+├── docker-compose.prod.yml     # Production overrides
 ├── data/
 │   └── cv/                     # PDF resume storage
 └── pyproject.toml
