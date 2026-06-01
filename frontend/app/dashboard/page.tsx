@@ -391,10 +391,14 @@ const EMPTY_STATE_NODES: NodeName[] = ["orchestrator", "scout", "tailor"];
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-    const {state, startWorkflow, abortWorkflow} = useWorkflowStream();
+    const {state, startWorkflow, abortWorkflow, clearResults} = useWorkflowStream();
     const {status: cvStatus, upload: cvUpload, hasCv} = useCvUpload();
-    const [criteria, setCriteria] = useState("");
-    const [threshold, setThreshold] = useState("0.6");
+    const [criteria, setCriteria] = useState(() => {
+        try { return sessionStorage.getItem("ah_last_criteria") ?? ""; } catch { return ""; }
+    });
+    const [threshold, setThreshold] = useState(() => {
+        try { return sessionStorage.getItem("ah_last_threshold") ?? "0.6"; } catch { return "0.6"; }
+    });
     const feedRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -404,6 +408,10 @@ export default function DashboardPage() {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!criteria.trim()) return;
+        try {
+            sessionStorage.setItem("ah_last_criteria", criteria.trim());
+            sessionStorage.setItem("ah_last_threshold", threshold);
+        } catch { /* ignore */ }
         startWorkflow(criteria.trim(), parseFloat(threshold) || 0.6);
     }
 
@@ -470,6 +478,16 @@ export default function DashboardPage() {
                         disabled={state.isStreaming}
                     />
                     <div className="flex gap-2 ml-auto">
+                        {hasActivity && (
+                            <button
+                                type="button"
+                                onClick={clearResults}
+                                disabled={state.isStreaming}
+                                className="rounded-xl px-4 py-2 text-sm border border-gray-200 text-gray-500 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                Clear
+                            </button>
+                        )}
                         {state.isStreaming && (
                             <button
                                 type="button"

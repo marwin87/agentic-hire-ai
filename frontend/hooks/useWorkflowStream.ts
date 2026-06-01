@@ -10,6 +10,32 @@ import {
   WorkflowState,
 } from "@/lib/workflow-types";
 
+const SESSION_KEY = "ah_last_workflow";
+
+function loadSession(): Partial<Pick<WorkflowState, "messages" | "finalResult">> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSession(state: WorkflowState) {
+  try {
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ messages: state.messages, finalResult: state.finalResult })
+    );
+  } catch {
+    // sessionStorage unavailable (SSR, private mode) — silently skip
+  }
+}
+
+function clearSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+}
+
 function findOrCreateMessage(
   messages: AgentMessageData[],
   node: NodeName
@@ -73,7 +99,10 @@ function applyEvent(
 }
 
 export function useWorkflowStream() {
-  const [state, setState] = useState<WorkflowState>(makeInitialState);
+  const [state, setState] = useState<WorkflowState>(() => ({
+    ...makeInitialState(),
+    ...loadSession(),
+  }));
   const abortRef = useRef<AbortController | null>(null);
 
   const startWorkflow = useCallback(async (criteria: string, scoreThreshold?: number) => {
@@ -81,6 +110,7 @@ export function useWorkflowStream() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    clearSession();
     setState({ ...makeInitialState(), isStreaming: true });
 
     try {
@@ -130,11 +160,15 @@ export function useWorkflowStream() {
           }
 
           if (event.node === "workflow" && event.status === "complete") {
-            setState((prev) => ({
-              ...prev,
-              finalResult: event.data as unknown as OrchestrateResponse,
-              isStreaming: false,
-            }));
+            setState((prev) => {
+              const next = {
+                ...prev,
+                finalResult: event.data as unknown as OrchestrateResponse,
+                isStreaming: false,
+              };
+              saveSession(next);
+              return next;
+            });
             break;
           }
 
@@ -154,5 +188,10 @@ export function useWorkflowStream() {
     setState(makeInitialState());
   }, []);
 
-  return { state, startWorkflow, abortWorkflow };
+  const clearResults = useCallback(() => {
+    clearSession();
+    setState(makeInitialState());
+  }, []);
+
+  return { state, startWorkflow, abortWorkflow, clearResults };
 }

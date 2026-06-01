@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base
@@ -116,6 +117,7 @@ class Evaluation(Base):  # type: ignore[misc, valid-type]
     __table_args__ = (
         Index("ix_evaluations_user_id", "user_id"),
         Index("ix_evaluations_job_id", "job_id"),
+        UniqueConstraint("user_id", "job_id", name="uq_evaluations_user_job"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)

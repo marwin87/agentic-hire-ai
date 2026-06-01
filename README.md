@@ -177,6 +177,37 @@ agentic-hire-ai/
 
 ---
 
+## Prerequisites
+
+Before running the application, you need to set up the following external services:
+
+### 1. OpenRouter (required)
+
+AgenticHire uses [OpenRouter](https://openrouter.ai/) to access LLMs (GPT-4o, Gemini, etc.) for job matching, CV parsing, and agent reasoning.
+
+1. Create a free account at [openrouter.ai](https://openrouter.ai/)
+2. Generate an API key under **Keys** in your dashboard
+3. Set it as `AGENTIC_HIRE_OPENROUTER_API_KEY` in your `.env`
+
+### 2. OrioSearch (required)
+
+AgenticHire uses [OrioSearch](https://www.oriosearch.org/) as its job discovery service. It must be running locally before you start the workflow.
+
+1. Follow the [OrioSearch setup guide](https://www.oriosearch.org/) to run it on port `8000`
+2. The app connects to it at `http://localhost:8000` by default (Docker: `host.docker.internal:8000`)
+
+### 3. JWT Secret (required)
+
+Used to sign authentication tokens. Generate one before first run:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Set the output as `AGENTIC_HIRE_JWT_SECRET_KEY` in your `.env`.
+
+---
+
 ## Getting Started
 
 ### Option A — Docker (recommended)

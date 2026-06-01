@@ -19,7 +19,7 @@ from src.api.schemas import (
     WorkflowStreamEvent,
 )
 from src.api.vectordb_async import get_cv_context_async
-from src.db import User
+from src.db import EvaluationRepository, Job, JobRepository, User
 from src.graph import build_graph
 from src.schema.state import AgenticHireState
 from src.utils.progress import set_progress_queue
@@ -154,6 +154,42 @@ async def search_jobs_workflow(
         logger.info(
             f"Graph results: {len(shortlisted_jobs)} shortlisted, {len(rejected_jobs)} rejected"
         )
+
+        # Persist jobs and evaluations
+        try:
+            # Jobs must be written before evaluations (FK constraint)
+            for job in all_jobs:
+                job_db = Job(
+                    id=job.id,
+                    user_id=user.id,
+                    title=job.title,
+                    company=job.company,
+                    description=job.description,
+                    url=job.url,
+                    salary_range=job.salary_range,
+                )
+                await JobRepository.create_or_update(session, job_db)
+            for job in shortlisted_jobs:
+                eval_data = applications.get(job.id, {})
+                tailor_summary = eval_data.get("founded_job_offer") or None
+                await EvaluationRepository.upsert(
+                    session,
+                    user_id=user.id,
+                    job_id=job.id,
+                    match_score=job.match_score,
+                    orchestrator_reasoning=job.analysis or None,
+                    tailor_summary=tailor_summary,
+                )
+            await session.commit()
+            logger.info(
+                f"[ORCHESTRATOR] Persisted {len(all_jobs)} jobs, "
+                f"{len(shortlisted_jobs)} evaluations"
+            )
+        except Exception as e:
+            logger.error(
+                f"Persistence failed (non-critical): {type(e).__name__}: {repr(e)}",
+                exc_info=True,
+            )
 
         # Build response: aggregate all jobs with results
         all_job_results = []
@@ -374,6 +410,43 @@ async def search_jobs_stream(
                         )
 
                 logger.info("[STREAM] Graph complete; building final response")
+
+                # Persist jobs and evaluations (session from outer scope)
+                try:
+                    # Jobs must be written before evaluations (FK constraint)
+                    for job in acc["valid_jobs"]:
+                        job_db = Job(
+                            id=job.id,
+                            user_id=user.id,
+                            title=job.title,
+                            company=job.company,
+                            description=job.description,
+                            url=job.url,
+                            salary_range=job.salary_range,
+                        )
+                        await JobRepository.create_or_update(session, job_db)
+                    for job in acc["shortlisted_jobs"]:
+                        eval_data = acc["applications"].get(job.id, {})
+                        tailor_summary = eval_data.get("founded_job_offer") or None
+                        await EvaluationRepository.upsert(
+                            session,
+                            user_id=user.id,
+                            job_id=job.id,
+                            match_score=job.match_score,
+                            orchestrator_reasoning=job.analysis or None,
+                            tailor_summary=tailor_summary,
+                        )
+                    await session.commit()
+                    logger.info(
+                        f"[STREAM] Persisted {len(acc['valid_jobs'])} jobs, "
+                        f"{len(acc['shortlisted_jobs'])} evaluations"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"[STREAM] Persistence failed (non-critical): {type(e).__name__}: {repr(e)}",
+                        exc_info=True,
+                    )
+
                 shortlisted_results: list[OrchestrateJobResult] = []
                 all_job_results: list[OrchestrateJobResult] = []
                 for job in acc["shortlisted_jobs"]:

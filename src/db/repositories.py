@@ -3,7 +3,10 @@
 from typing import List, Optional
 from uuid import UUID
 
+from datetime import datetime
+
 from sqlalchemy import select, and_, cast, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User, CVFile, CVEmbedding, Job, Evaluation
@@ -272,6 +275,41 @@ class EvaluationRepository:
             evaluation.match_score = match_score  # type: ignore[assignment]
             evaluation.orchestrator_reasoning = reasoning  # type: ignore[assignment]
             await session.flush()
+
+    @staticmethod
+    async def upsert(
+        session: AsyncSession,
+        user_id: UUID,
+        job_id: str,
+        match_score: float,
+        orchestrator_reasoning: Optional[str],
+        tailor_summary: Optional[str],
+    ) -> None:
+        """Insert or update an evaluation row for (user_id, job_id).
+
+        Uses PostgreSQL ON CONFLICT DO UPDATE against uq_evaluations_user_job
+        so re-running the workflow refreshes scores rather than creating duplicates.
+        """
+        stmt = (
+            pg_insert(Evaluation)
+            .values(
+                user_id=user_id,
+                job_id=job_id,
+                match_score=match_score,
+                orchestrator_reasoning=orchestrator_reasoning,
+                tailor_summary=tailor_summary,
+            )
+            .on_conflict_do_update(
+                constraint="uq_evaluations_user_job",
+                set_={
+                    "match_score": match_score,
+                    "orchestrator_reasoning": orchestrator_reasoning,
+                    "tailor_summary": tailor_summary,
+                    "evaluated_at": datetime.utcnow(),
+                },
+            )
+        )
+        await session.execute(stmt)
 
 
 class SearchSessionRepository:
