@@ -1,7 +1,7 @@
 ---
 change_id: testing-data-integrity
 title: Data integrity integration tests — evaluation persistence and user isolation
-status: implemented
+status: impl_reviewed
 created: 2026-06-01
 updated: 2026-06-01
 archived_at: null
