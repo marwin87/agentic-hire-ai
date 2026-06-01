@@ -57,12 +57,6 @@ docker-compose exec api alembic current
 - **Depends On**: `db` (with health check)
 - **Volumes**:
   - `./data/cv:/app/data/cv` — CV PDFs from host
-  - `chroma_db:/app/data/chroma_db` — Vector store (ChromaDB)
-
-### Optional: Streamlit UI (`app`)
-- **Service**: Interactive Streamlit UI
-- **Port**: 8501
-- Commented out by default in docker-compose.yml
 
 ## Environment Variables
 
@@ -144,8 +138,7 @@ docker-compose exec api pytest tests/ -v
 
 ## Database Persistence
 
-- PostgreSQL data persists in the `postgres_data` named volume
-- ChromaDB data (vector embeddings) persists in the `chroma_db` named volume
+- PostgreSQL data (including vector embeddings) persists in the `postgres_data` named volume
 - Data survives `docker-compose down` (only removed with `docker-compose down -v`)
 
 ## Troubleshooting

@@ -3,30 +3,21 @@ project: AgenticHire AI
 created: 2026-05-21
 context: local Docker Compose development and deployment
 python_version: 3.13
-current_deployment: Streamlit + ChromaDB
-next_phase: FastAPI + PostgreSQL + pgvector
+current_deployment: FastAPI + PostgreSQL + pgvector
 ---
 
 # Docker Best Practices for AgenticHire AI
 
-This guide covers containerization patterns for your LangGraph agent system. The current deployed system is Streamlit + ChromaDB (see `Dockerfile` and `docker-compose.yml` in the project root). This guide also covers patterns for Phase 1 refactoring (FastAPI + PostgreSQL + pgvector), to be implemented later.
+This guide covers containerization patterns for your LangGraph agent system. The current deployed system is FastAPI + PostgreSQL + pgvector (see `Dockerfile` and `docker-compose.yml` in the project root).
 
 ## Current System (Now Running)
 
 Your app currently runs as:
-- **Streamlit UI** (Python 3.13, web frontend at port 8501)
-- **ChromaDB** (local file-based vector store, `data/chroma_db/`)
+- **FastAPI** (Python 3.13, API backend at port 8000)
+- **PostgreSQL + pgvector** (persistent vector store and relational data)
 - **LangGraph agents** (Scout, Validate, Orchestrator, Tailor)
 
-Docker Compose runs a single container with Streamlit, mounting ChromaDB volume for persistence.
-
-## Phase 1 Architecture (Planned)
-
-Your Phase 1 refactor will add:
-- **FastAPI backend** (Python 3.13, async, endpoint-based agent execution)
-- **PostgreSQL + pgvector** (relational DB with vector extensions, replacing ChromaDB)
-- **Frontend** (React / Next.js, separate repository)
-- **Docker Compose** with three coordinated services
+Docker Compose runs a two-service stack (API + database), persisting data in a named volume.
 
 This guide assumes local-only deployment (single Docker Compose stack, no Kubernetes, no multi-region).
 
@@ -37,11 +28,9 @@ This guide assumes local-only deployment (single Docker Compose stack, no Kubern
 The Dockerfile and docker-compose.yml are already created and verified:
 
 ```bash
-# Start the Streamlit app
 docker-compose up
 
-# The app will be running at http://localhost:8501
-# ChromaDB data persists in the named volume agentic-hire-ai_chroma_db
+# The app will be running at http://localhost:8000
 
 # Verify health
 docker-compose ps
@@ -59,31 +48,31 @@ docker-compose down -v
 
 ## Architecture Walkthrough
 
-### Current System: Streamlit + ChromaDB
+### Current System: FastAPI + PostgreSQL + pgvector
 
 **File**: `Dockerfile` (multi-stage build, current)
 
 - **Builder stage**: Compiles Python 3.13 with all dependencies via `uv sync --frozen --no-dev --compile-bytecode`
 - **Runtime stage**: Installs only `poppler-utils` (OS-level dependency for PDF parsing), copies `.venv` from builder
-- **Health check**: Streamlit's `/_stcore/health` endpoint confirms readiness
-- **Cmd**: `streamlit run ui.py --server.port=8501 --server.address=0.0.0.0`
+- **Health check**: HTTP health endpoint confirms readiness
+- **Cmd**: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
 **File**: `docker-compose.yml` (current)
 
 - Single `app` service running the Dockerfile
-- Port 8501 exposed (Streamlit)
+- Port 8000 exposed (FastAPI)
 - Two volumes:
   - `./data/cv` (bind mount) — user drops PDFs here from the host
-  - `chroma_db` (named volume) — persists vector DB across restarts
+  - `postgres_data` (named volume) — persists vector DB and relational data across restarts
 - Environment: `AGENTIC_HIRE_OPENROUTER_API_KEY` required; `AGENTIC_HIRE_ORIOSEARCH_BASE_URL` defaults to `host.docker.internal:8000` (points to your local machine)
 
 **Build time**: ~23s (after first full build, layers cache)  
-**Image size**: 1.46GB (Python 3.13 slim + Streamlit + dependencies)  
+**Image size**: 1.46GB (Python 3.13 slim + dependencies)  
 **Container memory**: Reserved 2GB, limit 4GB
 
 ---
 
-## Dockerfile: Current Streamlit Implementation
+## Dockerfile: Current Implementation
 
 Create `Dockerfile` in the project root:
 
@@ -599,7 +588,6 @@ cat > .dockerignore <<EOF
 __pycache__
 .pytest_cache
 .mypy_cache
-data/chroma_db  # Old ChromaDB (Phase 1 migration)
 EOF
 ```
 

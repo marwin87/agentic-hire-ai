@@ -160,7 +160,6 @@ Exit code 137 means Docker force-killed the container (SIGKILL after timeout). I
 ## Upgrading from Phase 1
 
 See `MIGRATION.md` for the step-by-step upgrade guide, including:
-- ChromaDB volume cleanup
 - New required environment variables
 - Rollback instructions
 
@@ -202,10 +201,3 @@ deploy:
       cpus: '4'
 ```
 
-### Old ChromaDB volume warning
-
-If Docker warns about an orphaned `chroma_db` volume from Phase 1, it's harmless. Remove it once pgvector is confirmed working:
-
-```bash
-docker volume rm agentic-hire-ai_chroma_db
-```

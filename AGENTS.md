@@ -5,7 +5,7 @@
 ## Hard Rules
 
 - **Type hints required on all functions and module-level variables.** Mypy is strict (`disallow_untyped_defs = true`, `check_untyped_defs = true`). A function without a return type annotation will fail CI. Use proper type imports from `typing` and `src.schema` (e.g., `Annotated`, `TypedDict`, `JobOffer`).
-- **All tests must use `unittest.mock` for external calls** (APIs, ChromaDB, file I/O). Do not attempt real network requests or file writes in test mode.
+- **All tests must use `unittest.mock` for external calls** (APIs, external services, file I/O). Do not attempt real network requests or file writes in test mode.
 - **Configuration via `@AppConfig` in `src/config/settings.py`, never hardcoded.** Override via `.env` prefixes `AGENTIC_HIRE_*` (e.g., `AGENTIC_HIRE_MAX_VALID_OFFERS=10`).
 
 ## Project Structure
@@ -14,8 +14,8 @@
 - `src/tools/` → job_search, scrape_webpage, job_validator, CVVectorManager (RAG).
 - `src/schema/state.py` → `AgenticHireState` (TypedDict), `JobOffer` (Pydantic model).
 - `tests/` → pytest fixtures and mocked tests mirroring src layout.
-- `data/` → PDFs and ChromaDB storage.
-- Entry points: `main.py` (CLI), `ui.py` (Streamlit).
+- `data/` → PDFs and vector DB storage.
+- Entry points: `main.py` (CLI).
 
 Full architecture at @CLAUDE.md.
 
@@ -28,7 +28,6 @@ uv run mypy src/                  # Type check
 uv run pytest                     # Run all tests
 uv run pytest tests/test_graph.py::test_name -v  # Single test
 uv run python main.py             # CLI mode
-uv run streamlit run ui.py        # Interactive UI
 ```
 
 ## Coding Style & Naming

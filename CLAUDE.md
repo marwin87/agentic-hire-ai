@@ -13,23 +13,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The workflow follows a LangGraph state machine:
 1. **Scout** → searches for jobs via OrioSearch API and scrapes job postings
 2. **Validate Jobs** → checks if jobs are active/accessible using HTTP validation and LLM expiration detection
-3. **Orchestrator (Matchmaker)** → scores job relevance (0.0-1.0) using CV context retrieved from ChromaDB
+3. **Orchestrator (Matchmaker)** → scores job relevance (0.0-1.0) using CV context retrieved from pgvector
 4. **Tailor** → generates final evaluation text per job
 
 The system includes:
-- **Vision-based CV parsing**: PDF → Images → Vision LLM → text embeddings → ChromaDB vector store
+- **Vision-based CV parsing**: PDF → Images → Vision LLM → text embeddings → pgvector
 - **Semantic job matching**: Uses RAG to retrieve relevant CV sections before scoring
 - **Controlled retry loop**: Rescouts if insufficient valid jobs found (respects max_scout_runs limit)
-- **Streamlit UI** with real-time agent logging and neural terminal visualization
 
 ## Development Setup
 
 ### Dependencies
 - **Orchestration**: LangGraph
 - **LLM/Vision**: Calls via OpenRouter (supports OpenAI, Google, Anthropic models)
-- **Vector DB**: ChromaDB with embeddings
+- **Vector DB**: pgvector (PostgreSQL) with embeddings
 - **PDF Processing**: pdf2image + PIL for vision-based extraction
-- **Web**: Streamlit (UI), BeautifulSoup (scraping), requests (HTTP)
+- **Web**: BeautifulSoup (scraping), requests (HTTP)
 - **Config**: pydantic-settings with .env file support
 - **Logging**: loguru
 
@@ -72,29 +71,16 @@ uv run python main.py
 ```
 Executes the full workflow and prints results. Ingests CV only on first run (hash-based caching).
 
-### Streamlit UI (ui.py)
-```bash
-uv run streamlit run ui.py
-```
-Interactive interface with:
-- Real-time agent execution logs (styled neural terminal)
-- Job search parameters input
-- CV upload capability (if modified)
-- Visual job shortlist and evaluation results
-
 ## Docker Deployment
 
-Local development uses Docker Compose with Streamlit + ChromaDB. See `context/foundation/docker-practices.md` for comprehensive guidance.
+Local development uses Docker Compose. See `context/foundation/docker-practices.md` for comprehensive guidance.
 
-**Current system** (Streamlit + ChromaDB):
 ```bash
 docker-compose up
-# Opens http://localhost:8501
-# ChromaDB data persists in named volume agentic-hire-ai_chroma_db
 ```
 
 **Files**:
-- `Dockerfile` — Multi-stage build (Python 3.13, Streamlit, poppler-utils for PDF parsing)
+- `Dockerfile` — Multi-stage build (Python 3.13, poppler-utils for PDF parsing)
 - `docker-compose.yml` — Single app service with volume mounts
 - `.dockerignore` — Build context optimization
 
@@ -196,10 +182,10 @@ Logic: rescout if valid_jobs < max_offers AND scout_runs < max_scout_runs AND fo
 - Called by `validate_and_limit_jobs_node`
 
 **CVVectorManager** (vectordb.py):
-- Manages CV ingestion pipeline: PDF → base64 images → Vision LLM OCR → text → chunking → embeddings → ChromaDB
+- Manages CV ingestion pipeline: PDF → base64 images → Vision LLM OCR → text → chunking → embeddings → pgvector
 - Hash-based caching (only re-ingest if CV file changes)
 - `ingest_cv()`: Full pipeline; `get_context(query)`: Semantic search retrieval
-- ChromaDB collection persists to `data/chroma_db/`
+- Embeddings persist in PostgreSQL (pgvector)
 
 ### Configuration & Logging
 
@@ -225,21 +211,18 @@ agentic-hire-ai/
 │   │   ├── search.py           # job_search_tool (OrioSearch)
 │   │   ├── scrape.py           # scrape_webpage_tool (BeautifulSoup)
 │   │   ├── job_validator.py    # HTTP + LLM expiration check
-│   │   └── vectordb.py         # CVVectorManager (PDF→embeddings→ChromaDB)
+│   │   └── vectordb.py         # CVVectorManager (PDF→embeddings→pgvector)
 │   ├── schema/
 │   │   └── state.py            # AgenticHireState TypedDict + JobOffer model
 │   ├── config/
 │   │   ├── settings.py         # AppConfig via pydantic-settings
 │   │   └── logging.py          # loguru setup
 │   ├── graph.py                # LangGraph definition + conditional logic
-│   ├── utils.py                # JobParser utility
-│   └── debug_db.py             # Debugging helpers for ChromaDB
-├── ui.py                       # Streamlit entry point (419 lines)
+│   └── utils.py                # JobParser utility
 ├── main.py                     # CLI entry point
 ├── tests/                      # pytest fixtures + mocked tests
 ├── data/
-│   ├── cv/                     # PDF resume storage
-│   └── chroma_db/              # Persistent vector database
+│   └── cv/                     # PDF resume storage
 ├── pyproject.toml              # uv dependency declaration
 └── uv.lock                     # Locked dependency versions
 ```
@@ -287,9 +270,6 @@ Update `AppConfig` fields in `src/config/settings.py`:
 - Tailor uses higher-temperature model (0.7) for creative output
 - Vision uses high-capability model for PDF OCR
 
-### Debugging CV Ingestion
-Run `uv run python -c "from src.debug_db import *; debug_vectordb()"` or use CLI commands in `src/debug_db.py`.
-
 ### Adding LangFuse Tracing
 API keys for LangFuse already in `.env` (LANGFUSE_*). Hook into LangChain callbacks for observability (currently not integrated in code).
 
@@ -297,7 +277,7 @@ API keys for LangFuse already in `.env` (LANGFUSE_*). Hook into LangChain callba
 
 **Black** is installed (via `black[d]` in dependencies). No explicit pre-commit hooks configured, but you can lint manually:
 ```bash
-uv run black src/ tests/ main.py ui.py
+uv run black src/ tests/ main.py
 ```
 
 ## Git Workflow
@@ -323,7 +303,6 @@ This gives you control over what gets committed and the final commit message. On
 - **CV Ingestion is slow** (Vision LLM on all PDF pages): Consider caching more aggressively or lazy-loading embeddings
 - **OrioSearch dependency**: Local running instance required; no fallback search provider
 - **Rate limiting**: No built-in throttling on API calls; add if scaling to many scout runs
-- **Session state in Streamlit**: Uses `st.session_state` dict; consider persistent session management for long-running workflows
 - **Pydantic v2 migration**: Using latest pydantic-settings; be careful with validator decorators if updating
 
 <!-- BEGIN @przeprogramowani/10x-cli -->

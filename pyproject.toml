@@ -31,8 +31,7 @@ dependencies = [
     "PyJWT>=2.8.0",
     "passlib[argon2]>=1.7.4",
     "sqlalchemy[asyncio]>=2.0.25",
-    "streamlit>=1.56.0",
-    "uvicorn[standard]>=0.32.0",
+"uvicorn[standard]>=0.32.0",
 ]
 
 [tool.pytest.ini_options]
