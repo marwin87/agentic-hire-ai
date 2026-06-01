@@ -133,7 +133,12 @@ class JobRepository:
         existing_job = existing.scalar_one_or_none()
 
         if existing_job:
-            # Update existing
+            # Refuse to overwrite a job row that belongs to a different user.
+            # Job.id is the primary key, so attempting an INSERT would raise an
+            # IntegrityError — returning early is the correct no-op behaviour.
+            if existing_job.user_id != job.user_id:
+                return existing_job
+            # Update own existing job
             existing_job.title = job.title
             existing_job.company = job.company
             existing_job.description = job.description
@@ -148,9 +153,13 @@ class JobRepository:
             return job
 
     @staticmethod
-    async def get_by_id(session: AsyncSession, job_id: str) -> Optional[Job]:
-        """Retrieve a job by ID."""
-        result = await session.execute(select(Job).where(Job.id == job_id))
+    async def get_by_id(
+        session: AsyncSession, job_id: str, user_id: UUID
+    ) -> Optional[Job]:
+        """Retrieve a job by ID, scoped to the owning user."""
+        result = await session.execute(
+            select(Job).where(Job.id == job_id, Job.user_id == user_id)
+        )
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -249,10 +258,15 @@ class EvaluationRepository:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_by_job_id(session: AsyncSession, job_id: str) -> Optional[Evaluation]:
-        """Retrieve evaluation for a specific job."""
+    async def get_by_job_id(
+        session: AsyncSession, job_id: str, user_id: UUID
+    ) -> Optional[Evaluation]:
+        """Retrieve evaluation for a specific job, scoped to the owning user."""
         result = await session.execute(
-            select(Evaluation).where(Evaluation.job_id == job_id)
+            select(Evaluation).where(
+                Evaluation.job_id == job_id,
+                Evaluation.user_id == user_id,
+            )
         )
         return result.scalar_one_or_none()
 

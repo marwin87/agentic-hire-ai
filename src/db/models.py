@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for PostgreSQL + pgvector."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -33,8 +33,16 @@ class User(Base):  # type: ignore[misc, valid-type]
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email})>"
@@ -54,8 +62,14 @@ class CVFile(Base):  # type: ignore[misc, valid-type]
     )
     file_path = Column(String(512), nullable=False)
     file_hash = Column(String(64), nullable=False)
-    ingested_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    ingested_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     def __repr__(self) -> str:
         return f"<CVFile(id={self.id}, user_id={self.user_id})>"
@@ -72,11 +86,12 @@ class CVEmbedding(Base):  # type: ignore[misc, valid-type]
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     chunk_text = Column(Text, nullable=False)
     embedding = Column(Vector(1536), nullable=False)  # type: ignore[arg-type, misc]
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     def __repr__(self) -> str:
         return f"<CVEmbedding(id={self.id}, user_id={self.user_id})>"
@@ -96,15 +111,18 @@ class Job(Base):  # type: ignore[misc, valid-type]
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     title = Column(String(255), nullable=False)
     company = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     url = Column(String(512), nullable=False)
     salary_range = Column(String(100), nullable=True)
-    discovered_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    discovered_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     def __repr__(self) -> str:
         return f"<Job(id={self.id}, user_id={self.user_id}, title={self.title})>"
@@ -125,7 +143,6 @@ class Evaluation(Base):  # type: ignore[misc, valid-type]
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     job_id = Column(
         String(255), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
@@ -133,7 +150,9 @@ class Evaluation(Base):  # type: ignore[misc, valid-type]
     match_score = Column(Float, nullable=False)
     orchestrator_reasoning = Column(Text, nullable=True)
     tailor_summary = Column(Text, nullable=True)
-    evaluated_at = Column(DateTime, default=datetime.utcnow)
+    evaluated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     def __repr__(self) -> str:
         return (
@@ -158,7 +177,9 @@ class SearchSession(Base):  # type: ignore[misc, valid-type]
     )
     criteria = Column(Text, nullable=False)
     found_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     def __repr__(self) -> str:
         return f"<SearchSession(id={self.id}, user_id={self.user_id}, criteria='{self.criteria[:50]}...')>"
