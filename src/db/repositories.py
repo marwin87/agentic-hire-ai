@@ -3,7 +3,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select, and_, cast, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -305,7 +305,7 @@ class EvaluationRepository:
                     "match_score": match_score,
                     "orchestrator_reasoning": orchestrator_reasoning,
                     "tailor_summary": tailor_summary,
-                    "evaluated_at": datetime.utcnow(),
+                    "evaluated_at": datetime.now(timezone.utc),
                 },
             )
         )

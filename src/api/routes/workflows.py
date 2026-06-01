@@ -186,6 +186,7 @@ async def search_jobs_workflow(
                 f"{len(shortlisted_jobs)} evaluations"
             )
         except Exception as e:
+            await session.rollback()
             logger.error(
                 f"Persistence failed (non-critical): {type(e).__name__}: {repr(e)}",
                 exc_info=True,
@@ -442,6 +443,7 @@ async def search_jobs_stream(
                         f"{len(acc['shortlisted_jobs'])} evaluations"
                     )
                 except Exception as e:
+                    await session.rollback()
                     logger.error(
                         f"[STREAM] Persistence failed (non-critical): {type(e).__name__}: {repr(e)}",
                         exc_info=True,
