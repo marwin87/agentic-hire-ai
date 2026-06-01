@@ -266,4 +266,4 @@ The unique constraint is applied with `CREATE UNIQUE INDEX` semantics. Existing 
 
 #### Manual
 
-- [ ] 3.4 No tests skipped or xfail
+- [x] 3.4 No tests skipped or xfail

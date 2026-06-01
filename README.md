@@ -2,6 +2,10 @@
 
 An AI-powered agent system that autonomously searches, validates, evaluates, and tailors job applications using a multi-agent LangGraph architecture combined with RAG and Vision-based CV understanding.
 
+<a href="data/AgenticHireAI_workflow_ui.jpg">
+  <img src="data/AgenticHireAI_workflow_ui.jpg" alt="AgenticHire AI UI Example" width="480" height="520"/>
+</a>
+
 ---
 
 ## Tech Stack
@@ -49,9 +53,10 @@ Generates a concise final evaluation per shortlisted job using orchestrator reas
 Full-featured web interface with:
 - JWT-based authentication (sign up, login, sign out)
 - CV upload with persistence across sessions
-- Real-time agent workflow with streaming SSE tiles
+- Real-time agent workflow with streaming SSE tiles; results restored on navigation
 - Configurable score threshold per search
-- Job history page with per-job delete and clear-all
+- Job history page showing match scores from DB, with per-job delete and clear-all
+- Clear button to reset the search conversation (active only when no workflow is running)
 
 ---
 
@@ -101,8 +106,9 @@ Full-featured web interface with:
 ║                      PERSISTENCE                             ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  PostgreSQL 17 + pgvector                                    ║
-║  • users, cv_files, jobs tables                              ║
+║  • users, cv_files, jobs, evaluations tables                 ║
 ║  • CV embeddings via pgvector                                ║
+║  • match scores + tailor summaries persisted after each run  ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
