@@ -36,14 +36,15 @@ export default defineConfig({
     {
       command: "npm run dev",
       url: "http://localhost:3000",
-      reuseExistingServer: !process.env.CI,
+      // Always reuse: locally reuses Docker stack; in CI reuses the stack started by the e2e job
+      reuseExistingServer: true,
       timeout: 120_000,
     },
     {
       command: "docker-compose up api",
       cwd: "..",
       url: "http://localhost:8001/health",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 60_000,
     },
   ],
