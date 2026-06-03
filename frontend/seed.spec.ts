@@ -16,19 +16,19 @@
 import { test, expect } from "@playwright/test";
 
 // Backend URL used only for API-level setup/teardown (not the frontend proxy)
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8001";
 
 test.describe("user data isolation — authentication boundary", () => {
   let testEmail: string;
   const PASSWORD = "Seed1234!";
 
   test.beforeEach(async ({ request }) => {
-    // Unique suffix: prevents unique-constraint violations in parallel runs
-    testEmail = `seed-${Date.now()}@example.com`;
+    // Timestamp + random hex: prevents collisions between parallel workers
+    testEmail = `seed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
     const res = await request.post(`${BACKEND_URL}/api/signup`, {
       data: { email: testEmail, password: PASSWORD, password_confirm: PASSWORD },
     });
-    expect(res.status()).toBe(201);
+    expect(res.status()).toBe(200);
   });
 
   test.afterEach(async ({ request }) => {

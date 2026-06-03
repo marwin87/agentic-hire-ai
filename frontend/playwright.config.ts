@@ -40,9 +40,9 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: "uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000",
+      command: "docker-compose up api",
       cwd: "..",
-      url: "http://localhost:8000/health",
+      url: "http://localhost:8001/health",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
