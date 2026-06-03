@@ -16,6 +16,7 @@ from src.api.routes import (
     cv,
     workflows,
     jobs,
+    testing,
 )
 from src.config.settings import config
 from src.db import init_db, close_db
@@ -108,3 +109,4 @@ app.include_router(validation.router)
 app.include_router(cv.router)
 app.include_router(workflows.router)
 app.include_router(jobs.router)
+app.include_router(testing.router)
