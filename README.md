@@ -1,9 +1,11 @@
 # AgenticHire AI
 
+<img src="data/banner.jpg" width="900" height="297"/>
+
 An AI-powered agent system that autonomously searches, validates, evaluates, and tailors job applications using a multi-agent LangGraph architecture combined with RAG and Vision-based CV understanding.
 
 <a href="data/AgenticHireAI_workflow_ui.jpg">
-  <img src="data/AgenticHireAI_workflow_ui.jpg" alt="AgenticHire AI UI Example" width="480" height="520"/>
+  <img src="data/AgenticHireAI_workflow_ui.jpg" alt="AgenticHire AI UI Example" width="240" height="240"/>
 </a>
 
 ---

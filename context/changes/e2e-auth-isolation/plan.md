@@ -201,6 +201,6 @@ Write the isolation spec that proves Risk #2 is protected in the rendered UI. Us
 
 #### Manual
 
-- [ ] 2.3 Deliberate-break Test 1 (jobs user_id filter): test goes red, revert restores green
-- [ ] 2.4 Deliberate-break Test 2 (CV status user_id filter): test goes red, revert restores green
-- [ ] 2.5 playwright/.auth/user-b.json not committed
+- [x] 2.3 Deliberate-break Test 1 (jobs user_id filter): test goes red, revert restores green
+- [x] 2.4 Deliberate-break Test 2 (CV status user_id filter): test goes red, revert restores green
+- [x] 2.5 playwright/.auth/user-b.json not committed
