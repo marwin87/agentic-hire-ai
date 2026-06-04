@@ -1,10 +1,10 @@
 ---
 change_id: e2e-auth-isolation
 title: E2E auth isolation
-status: implemented
+status: archived
 created: 2026-06-03
 updated: 2026-06-04
-archived_at: null
+archived_at: 2026-06-04T13:15:18Z
 ---
 
 ## Notes
