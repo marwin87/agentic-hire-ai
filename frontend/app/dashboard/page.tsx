@@ -93,15 +93,7 @@ function CvUploadPanel({
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-700">CV / Resume</p>
-                {isSuccess && (
-                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                        <span>✓</span>
-                        {(status as { type: "success"; chunks: number; filename: string }).filename}
-                    </span>
-                )}
-            </div>
+            <p className="text-sm font-semibold text-gray-700">CV / Resume</p>
 
             {isChecking ? (
                 <div className="flex items-center gap-2 px-6 py-4 text-sm text-gray-400">
@@ -142,12 +134,17 @@ function CvUploadPanel({
                     )}
                 </div>
             ) : (
-                <button
-                    onClick={() => inputRef.current?.click()}
-                    className="text-xs text-gray-400 hover:text-indigo-600 transition"
-                >
-                    Replace CV
-                </button>
+                <div className="flex flex-col items-start gap-2">
+                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                        <span className="text-green-600 font-medium flex items-center gap-1"><span>✓</span>{(status as { type: "success"; chunks: number; filename: string }).filename}</span>
+                    </p>
+                    <button
+                        onClick={() => inputRef.current?.click()}
+                        className="rounded-xl px-4 py-2 text-sm border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+                    >
+                        Replace CV
+                    </button>
+                </div>
             )}
 
             {status.type === "error" && (
@@ -191,7 +188,7 @@ function formatSummary(node: AgentMessageData["node"], summary: Record<string, u
 function Avatar({config, pulse}: { config: AgentConfig; pulse?: boolean }) {
     return (
         <div
-            className={`relative w-11 h-11 rounded-full shrink-0 overflow-hidden ${
+            className={`relative w-14 h-14 rounded-full shrink-0 overflow-hidden ${
                 pulse
                     ? "ring-2 ring-offset-2 ring-indigo-400 animate-pulse"
                     : "ring-1 ring-gray-200"
@@ -202,7 +199,7 @@ function Avatar({config, pulse}: { config: AgentConfig; pulse?: boolean }) {
                 alt={config.label}
                 fill
                 className="object-cover"
-                sizes="44px"
+                sizes="56px"
             />
         </div>
     );
@@ -549,14 +546,14 @@ export default function DashboardPage() {
                         {EMPTY_STATE_NODES.map((node) => (
                             <div
                                 key={node}
-                                className="relative w-10 h-10 rounded-full overflow-hidden ring-1 ring-gray-200"
+                                className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-gray-200"
                             >
                                 <Image
                                     src={AGENT_CONFIGS[node].avatarSrc}
                                     alt={AGENT_CONFIGS[node].label}
                                     fill
                                     className="object-cover"
-                                    sizes="40px"
+                                    sizes="56px"
                                 />
                             </div>
                         ))}
