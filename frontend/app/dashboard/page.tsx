@@ -60,7 +60,7 @@ function useCvUpload() {
                 } else if (data.ingestion_status === "completed") {
                     setStatus({type: "success", filename: data.filename ?? "resume.pdf"});
                 } else if (data.ingestion_status === "failed") {
-                    setStatus({type: "error", message: data.ingestion_error ?? "CV processing failed."});
+                    setStatus({type: "idle"});
                 } else {
                     // still processing from a previous session
                     const filename = data.filename ?? "resume.pdf";
