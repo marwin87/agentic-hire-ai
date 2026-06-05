@@ -62,9 +62,8 @@ class CVFile(Base):  # type: ignore[misc, valid-type]
     )
     file_path = Column(String(512), nullable=False)
     file_hash = Column(String(64), nullable=False)
-    ingested_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    ingested_at = Column(DateTime(timezone=True), nullable=True, default=None)
+    ingestion_error = Column(Text, nullable=True, default=None)
     updated_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

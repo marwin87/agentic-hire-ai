@@ -48,7 +48,7 @@ def should_rescout(state: AgenticHireState) -> str:
 
 async def orchestrator_node(state: AgenticHireState) -> dict[str, Any]:
     """Wrapper to add logging around orchestrator agent invocation."""
-    factory = get_agent_factory()
+    factory = get_agent_factory(user_id=state.get("user_id"))
     valid_jobs = state.get("valid_jobs", [])
     cv_context = state.get("resume_context", "")
     logger.info(

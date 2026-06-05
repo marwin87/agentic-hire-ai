@@ -1,12 +1,12 @@
 """CV upload and management endpoints."""
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Depends
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loguru import logger
 from pydantic import SecretStr
@@ -16,6 +16,7 @@ from src.api.dependencies import get_db, get_current_user
 from src.api.schemas import UploadCVResponse, CVStatusResponse
 from src.config.settings import config
 from src.db import User, CVFile
+from src.db.database import get_session_factory
 from src.db.repositories import CVEmbeddingRepository, CVFileRepository
 from src.tools.vectordb import CVVectorManager
 
@@ -32,37 +33,81 @@ async def calculate_file_hash(content: bytes) -> str:
     return sha256_hash.hexdigest()
 
 
+async def _ingest_cv_background(
+    file_id: UUID,
+    filepath: str,
+    vector_manager: CVVectorManager,
+) -> None:
+    """Background task: run Vision LLM ingestion and stamp CVFile on completion."""
+    factory = get_session_factory()
+    try:
+        await vector_manager.ingest_cv_async(filepath)
+        async with factory() as session:
+            cv_file = await session.get(CVFile, file_id)
+            if cv_file:
+                cv_file.ingested_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+                await session.commit()
+        logger.info(f"[CV] Background ingestion completed for file {file_id}")
+    except ValueError as e:
+        async with factory() as session:
+            cv_file = await session.get(CVFile, file_id)
+            if cv_file:
+                cv_file.ingestion_error = str(e)  # type: ignore[assignment]
+                await session.commit()
+        logger.warning(f"[CV] Ingestion rejected for file {file_id}: {e}")
+    except Exception as e:
+        async with factory() as session:
+            cv_file = await session.get(CVFile, file_id)
+            if cv_file:
+                cv_file.ingestion_error = "CV processing failed. Please try again."  # type: ignore[assignment]
+                await session.commit()
+        logger.error(f"[CV] Ingestion failed for file {file_id}: {e}", exc_info=e)
+
+
 @router.get("/cv/status", response_model=CVStatusResponse)
 async def cv_status(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Return whether the authenticated user has an uploaded CV."""
+    """Return CV upload state and ingestion status for the authenticated user."""
     user_id_val = cast(UUID, user.id)
     cv_file = await CVFileRepository.get_latest_by_user(db, user_id_val)
     if cv_file is None:
-        return {"has_cv": False, "filename": None}
+        return {
+            "has_cv": False,
+            "filename": None,
+            "ingestion_status": "none",
+            "ingestion_error": None,
+        }
+
     filename = Path(cv_file.file_path).name
-    return {"has_cv": True, "filename": filename}
+
+    if cv_file.ingestion_error is not None:
+        ingestion_status = "failed"
+    elif cv_file.ingested_at is not None:
+        ingestion_status = "completed"
+    else:
+        ingestion_status = "processing"
+
+    return {
+        "has_cv": True,
+        "filename": filename,
+        "ingestion_status": ingestion_status,
+        "ingestion_error": cv_file.ingestion_error,
+    }
 
 
-@router.post("/upload_cv", response_model=UploadCVResponse)
+@router.post("/upload_cv", response_model=UploadCVResponse, status_code=202)
 async def upload_cv(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     replace_existing: bool = True,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Upload a CV file and trigger embedding pipeline.
+    """Upload a CV file and queue the embedding pipeline as a background task.
 
-    Args:
-        file: PDF file to upload
-        replace_existing: If True, delete prior CV files + embeddings for user
-        user: Authenticated user (from JWT token)
-        db: Database session
-
-    Returns:
-        UploadCVResponse with file_id, path, hash, chunks_stored
+    Returns 202 immediately. Poll GET /api/cv/status for ingestion_status.
 
     Raises:
         HTTPException: 400 for invalid file, 401 for auth failure
@@ -121,6 +166,12 @@ async def upload_cv(
                     prior_path.unlink()
                     logger.info(f"Deleted prior CV file: {prior_path}")
 
+                # Delete text cache so next ingest re-runs Vision OCR on the new file
+                cache_path = user_cv_dir / f"cv_text_{user_id_val}.md"
+                if cache_path.exists():
+                    cache_path.unlink()
+                    logger.info(f"Deleted CV text cache: {cache_path}")
+
                 # Delete from database
                 await CVEmbeddingRepository.delete_by_user(db, user_id_val)
                 await db.delete(prior_cv)
@@ -143,52 +194,47 @@ async def upload_cv(
         logger.error(f"Error creating CVFile record: {e}", exc_info=e)
         raise HTTPException(status_code=500, detail="Error storing file metadata")
 
-    # Trigger Vision LLM OCR + embedding pipeline
-    try:
-        # Initialize vision model and embeddings
-        api_key_value = config.openrouter_api_key
-        api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
-
-        vision_model = ChatOpenAI(
-            model=config.vision_model_name,
-            temperature=0,
-            base_url=config.openrouter_base_url,
-            api_key=api_key,
-        )
-
-        embeddings = OpenAIEmbeddings(
-            model=config.embedded_model_name,
-            base_url=config.openrouter_base_url,
-            api_key=api_key,
-        )
-
-        vector_manager = CVVectorManager(
-            vision_model=vision_model,
-            embeddings=embeddings,
-            user_id=user_id_val,
-            cv_cache_dir=str(user_cv_dir),
-        )
-        result = await vector_manager.ingest_cv_async(str(filepath))
-        chunks_stored = result.get("chunks_stored", 0)
-        logger.info(
-            f"CV ingestion completed for user {user_id_val}: {chunks_stored} chunks"
-        )
-    except Exception as e:
-        logger.error(f"Error ingesting CV: {e}", exc_info=e)
-        raise HTTPException(status_code=500, detail="Error processing CV file")
-
-    # Commit transaction
+    # Commit file record before starting background work
     try:
         await db.commit()
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error committing transaction: {e}", exc_info=e)
-        raise HTTPException(status_code=500, detail="Error storing file")
+        logger.error(f"Error committing CV record: {e}", exc_info=e)
+        raise HTTPException(status_code=500, detail="Error storing file metadata")
+
+    # Build vector manager and enqueue ingestion — returns immediately
+    api_key_value = config.openrouter_api_key
+    api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
+
+    vision_model = ChatOpenAI(
+        model=config.vision_model_name,
+        temperature=0,
+        base_url=config.openrouter_base_url,
+        api_key=api_key,
+    )
+    embeddings_model = OpenAIEmbeddings(
+        model=config.embedded_model_name,
+        base_url=config.openrouter_base_url,
+        api_key=api_key,
+    )
+    vector_manager = CVVectorManager(
+        vision_model=vision_model,
+        embeddings=embeddings_model,
+        user_id=user_id_val,
+        cv_cache_dir=str(user_cv_dir),
+    )
+
+    background_tasks.add_task(
+        _ingest_cv_background,
+        cast(UUID, cv_file.id),
+        str(filepath),
+        vector_manager,
+    )
+    logger.info(f"[CV] Ingestion queued for file {cv_file.id}")
 
     return {
         "file_id": str(cv_file.id),
         "file_path": str(filepath),
         "file_hash": file_hash,
-        "chunks_stored": chunks_stored,
-        "status": "success",
+        "status": "processing",
     }

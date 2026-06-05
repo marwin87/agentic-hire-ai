@@ -124,8 +124,7 @@ class UploadCVResponse(BaseModel):
     file_id: str = Field(..., description="CVFile.id UUID")
     file_path: str = Field(..., description="Relative path where file is stored")
     file_hash: str = Field(..., description="SHA256 hash of the uploaded file")
-    chunks_stored: int = Field(..., description="Number of embedding chunks created")
-    status: str = Field(..., description="Upload status ('success' or error code)")
+    status: str = Field(..., description="Always 'processing' — poll /api/cv/status")
 
 
 class CVStatusResponse(BaseModel):
@@ -133,6 +132,13 @@ class CVStatusResponse(BaseModel):
 
     has_cv: bool = Field(..., description="True if the user has an uploaded CV")
     filename: Optional[str] = Field(None, description="Original filename if CV exists")
+    ingestion_status: str = Field(
+        default="none",
+        description="'none' | 'processing' | 'completed' | 'failed'",
+    )
+    ingestion_error: Optional[str] = Field(
+        None, description="LLM rejection message or server error if ingestion failed"
+    )
 
 
 # Orchestrate endpoint schemas

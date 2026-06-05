@@ -352,6 +352,7 @@ async def search_jobs_stream(
         )
 
     initial_state: AgenticHireState = {
+        "user_id": user.id,
         "resume_context": cv_context,
         "target_criteria": request.criteria or "",
         "found_jobs": [],

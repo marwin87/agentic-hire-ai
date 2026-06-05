@@ -89,6 +89,32 @@ class CVVectorManager:
     def _normalize_bullets(text: str) -> str:
         return re.sub(r"[•\-\*]", "\n•", text)
 
+    def _detect_if_cv(self, b64_img: str) -> None:
+        """Raises ValueError if the first page does not appear to be a CV/resume."""
+        human_msg = HumanMessage(
+            content=[
+                {
+                    "type": "text",
+                    "text": (
+                        "Is this document a CV or resume?\n"
+                        "Start your reply with YES or NO, then in 1 sentence "
+                        "explain what you see and why you think so."
+                    ),
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{b64_img}",
+                        "detail": "low",
+                    },
+                },
+            ]
+        )
+        response = self.vision_model.invoke([human_msg])
+        answer = str(response.content).strip()
+        if not answer.upper().startswith("YES"):
+            raise ValueError(answer)
+
     def _process_single_page(self, page_data: tuple) -> str:
         i, b64_img, total = page_data
         logger.debug(f"[VECTOR_DB] Processing page {i + 1}/{total}")
@@ -148,6 +174,10 @@ class CVVectorManager:
         else:
             logger.info("[VECTOR_DB] Reading CV via Vision model...")
             base64_images = self._pdf_to_base64_images(file_path)
+
+            logger.info("[VECTOR_DB] Verifying document is a CV...")
+            self._detect_if_cv(base64_images[0])
+
             page_data = [
                 (i, img, len(base64_images)) for i, img in enumerate(base64_images)
             ]

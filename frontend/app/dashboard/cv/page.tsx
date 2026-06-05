@@ -1,17 +1,51 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type UploadStatus =
   | { type: "idle" }
   | { type: "uploading" }
-  | { type: "success"; chunks: number }
+  | { type: "processing" }
+  | { type: "success" }
   | { type: "error"; message: string };
 
 export default function CVUploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<UploadStatus>({ type: "idle" });
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopPolling() {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  useEffect(() => stopPolling, []);
+
+  function startPolling() {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/cv/status", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ingestion_status === "completed") {
+          stopPolling();
+          setStatus({ type: "success" });
+        } else if (data.ingestion_status === "failed") {
+          stopPolling();
+          setStatus({
+            type: "error",
+            message: data.ingestion_error ?? "CV processing failed. Please try again.",
+          });
+        }
+      } catch {
+        // network blip — keep polling
+      }
+    }, 2500);
+  }
 
   async function uploadFile(file: File) {
     if (file.type !== "application/pdf") {
@@ -27,6 +61,7 @@ export default function CVUploadPage() {
     }
 
     setStatus({ type: "uploading" });
+    stopPolling();
 
     const formData = new FormData();
     formData.append("file", file);
@@ -47,7 +82,9 @@ export default function CVUploadPage() {
         return;
       }
 
-      setStatus({ type: "success", chunks: data.chunks_stored });
+      // 202 — file saved, ingestion running in background
+      setStatus({ type: "processing" });
+      startPolling();
     } catch {
       setStatus({ type: "error", message: "Upload failed. Please try again." });
     }
@@ -106,13 +143,17 @@ export default function CVUploadPage() {
 
       {status.type === "uploading" && (
         <div className="flex items-center gap-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
-          <span className="animate-spin">⏳</span> Uploading and embedding…
+          <span className="animate-spin">⏳</span> Uploading…
+        </div>
+      )}
+      {status.type === "processing" && (
+        <div className="flex items-center gap-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
+          <span className="animate-spin">⏳</span> Processing CV — reading and embedding your resume…
         </div>
       )}
       {status.type === "success" && (
         <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-          ✅ CV uploaded successfully — <strong>{status.chunks} chunks</strong>{" "}
-          embedded.
+          ✅ CV uploaded and embedded successfully.
         </div>
       )}
       {status.type === "error" && (

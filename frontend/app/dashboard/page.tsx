@@ -17,24 +17,60 @@ type CvStatus =
     | { type: "idle" }
     | { type: "checking" }
     | { type: "uploading" }
-    | { type: "success"; chunks: number; filename: string }
+    | { type: "processing"; filename: string }
+    | { type: "success"; filename: string }
     | { type: "error"; message: string };
 
 function useCvUpload() {
     const [status, setStatus] = useState<CvStatus>({type: "checking"});
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Check on mount whether the user already has a CV in the database
+    function stopPolling() {
+        if (pollRef.current !== null) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+        }
+    }
+
+    function startPolling(filename: string) {
+        stopPolling();
+        pollRef.current = setInterval(async () => {
+            try {
+                const res = await fetch("/api/cv/status", {cache: "no-store"});
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.ingestion_status === "completed") {
+                    stopPolling();
+                    setStatus({type: "success", filename: data.filename ?? filename});
+                } else if (data.ingestion_status === "failed") {
+                    stopPolling();
+                    setStatus({type: "error", message: data.ingestion_error ?? "CV processing failed. Please try again."});
+                }
+            } catch { /* network blip — keep polling */ }
+        }, 2500);
+    }
+
+    // Check on mount whether the user already has a CV (and its ingestion state)
     useEffect(() => {
         fetch("/api/cv/status")
             .then((r) => r.json())
             .then((data) => {
-                if (data.has_cv) {
-                    setStatus({type: "success", chunks: 0, filename: data.filename ?? "resume.pdf"});
-                } else {
+                if (!data.has_cv) {
                     setStatus({type: "idle"});
+                } else if (data.ingestion_status === "completed") {
+                    setStatus({type: "success", filename: data.filename ?? "resume.pdf"});
+                } else if (data.ingestion_status === "failed") {
+                    setStatus({type: "error", message: data.ingestion_error ?? "CV processing failed."});
+                } else {
+                    // still processing from a previous session
+                    const filename = data.filename ?? "resume.pdf";
+                    setStatus({type: "processing", filename});
+                    startPolling(filename);
                 }
             })
             .catch(() => setStatus({type: "idle"}));
+        return stopPolling;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     async function upload(file: File) {
@@ -50,6 +86,7 @@ function useCvUpload() {
             return;
         }
         setStatus({type: "uploading"});
+        stopPolling();
         const formData = new FormData();
         formData.append("file", file);
         try {
@@ -59,7 +96,9 @@ function useCvUpload() {
                 setStatus({type: "error", message: data.detail ?? "Upload failed."});
                 return;
             }
-            setStatus({type: "success", chunks: data.chunks_stored, filename: file.name});
+            // 202 — file saved, ingestion running in background
+            setStatus({type: "processing", filename: file.name});
+            startPolling(file.name);
         } catch {
             setStatus({type: "error", message: "Upload failed. Please try again."});
         }
@@ -90,6 +129,7 @@ function CvUploadPanel({
 
     const isSuccess = status.type === "success";
     const isChecking = status.type === "checking";
+    const isProcessing = status.type === "processing";
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
@@ -99,6 +139,21 @@ function CvUploadPanel({
                 <div className="flex items-center gap-2 px-6 py-4 text-sm text-gray-400">
                     <span className="w-4 h-4 rounded-full border-2 border-gray-300 border-t-transparent animate-spin"/>
                     Checking…
+                </div>
+            ) : isProcessing ? (
+                <div className="flex items-center gap-3 px-3 py-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center text-xl shrink-0">
+                        💻
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-700 truncate">
+                            {(status as { type: "processing"; filename: string }).filename}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="w-3 h-3 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin shrink-0"/>
+                            <span className="text-xs text-indigo-600">Reading and embedding your CV…</span>
+                        </div>
+                    </div>
                 </div>
             ) : !isSuccess ? (
                 <div
@@ -136,7 +191,7 @@ function CvUploadPanel({
             ) : (
                 <div className="flex flex-col items-start gap-2">
                     <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <span className="text-green-600 font-medium flex items-center gap-1"><span>✓</span>{(status as { type: "success"; chunks: number; filename: string }).filename}</span>
+                        <span className="text-green-600 font-medium flex items-center gap-1"><span>✓</span>{(status as { type: "success"; filename: string }).filename}</span>
                     </p>
                     <button
                         onClick={() => inputRef.current?.click()}
@@ -513,7 +568,9 @@ export default function DashboardPage() {
                 {!hasCv && criteria.trim() && cvStatus.type !== "checking" && (
                     <p className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                         <span>⚠</span>
-                        Please upload your CV first — the agents need it to score how well each job matches your experience.
+                        {cvStatus.type === "processing"
+                            ? "Your CV is still being processed — Search will unlock once embedding is complete."
+                            : "Please upload your CV first — the agents need it to score how well each job matches your experience."}
                     </p>
                 )}
             </form>

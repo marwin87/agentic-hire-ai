@@ -92,6 +92,6 @@ class AgentFactory:
 
 # Function to get an AgentFactory instance.
 # This allows for lazy initialization and easier mocking in tests.
-def get_agent_factory() -> AgentFactory:
-    """Returns a new instance of AgentFactory."""
-    return AgentFactory()
+def get_agent_factory(user_id: UUID | None = None) -> AgentFactory:
+    """Returns a new instance of AgentFactory scoped to the given user_id."""
+    return AgentFactory(user_id=user_id)
