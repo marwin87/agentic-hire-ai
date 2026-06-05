@@ -120,7 +120,8 @@ def test_should_rescout_one_below_max_valid_jobs(
             **initial_state,
             "max_offers": 3,
             "valid_jobs": [mock_job_offer, mock_job_offer],  # 2 jobs, target is 3
-            "scout_runs": 0,
+            "found_jobs": [mock_job_offer],
+            "scout_runs": 1,
         },
     )
     assert should_rescout(state) == "rescout"
