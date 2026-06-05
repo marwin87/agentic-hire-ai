@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-06-01 (Phase 1 change opened)
+> Last updated: 2026-06-05 (Phase 3 change opened)
 
 ---
 
@@ -74,9 +74,9 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Data integrity | Prove evaluation writes survive to DB and user_id isolation holds under two-user requests | #1, #2 | integration (real async DB session, two-user fixture) | change opened | context/changes/testing-data-integrity/ |
-| 2 | Agent logic regression | Catch validator false negatives, rescout edge errors, and RAG retrieval quality drift | #4, #5, #6 | unit + integration | not started | — |
-| 3 | Streaming resilience | Prove orphan tasks cancel on SSE disconnect and competing writes are handled by the upsert | #3 | integration (disconnect simulation) | not started | — |
+| 1 | Data integrity | Prove evaluation writes survive to DB and user_id isolation holds under two-user requests | #1, #2 | integration (real async DB session, two-user fixture) | archived | context/archive/2026-06-01-testing-data-integrity/ |
+| 2 | Agent logic regression | Catch validator false negatives, rescout edge errors, and RAG retrieval quality drift | #4, #5, #6 | unit + integration | archived | context/archive/2026-06-05-testing-agent-logic-regression/ |
+| 3 | Streaming resilience | Prove orphan tasks cancel on SSE disconnect and competing writes are handled by the upsert | #3 | integration (disconnect simulation) | change opened | context/changes/testing-streaming-resilience/ |
 | 4 | Security gate | Prove no secrets or tracebacks escape into error responses or logs | #7 | unit (response + log inspection) | not started | — |
 
 ---
