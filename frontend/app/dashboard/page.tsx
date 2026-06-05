@@ -1,6 +1,7 @@
 "use client";
 
 import {useEffect, useRef, useState} from "react";
+import {useWorkflowState} from "@/context/workflow-state";
 import Image from "next/image";
 import {useWorkflowStream} from "@/hooks/useWorkflowStream";
 import {
@@ -445,6 +446,11 @@ const EMPTY_STATE_NODES: NodeName[] = ["orchestrator", "scout", "tailor"];
 export default function DashboardPage() {
     const {state, startWorkflow, abortWorkflow, clearResults} = useWorkflowStream();
     const {status: cvStatus, upload: cvUpload, hasCv} = useCvUpload();
+    const {register} = useWorkflowState();
+
+    useEffect(() => {
+        register({isStreaming: state.isStreaming, abort: abortWorkflow});
+    }, [state.isStreaming, abortWorkflow, register]);
     const [criteria, setCriteria] = useState(() => {
         try { return sessionStorage.getItem("ah_last_criteria") ?? ""; } catch { return ""; }
     });
