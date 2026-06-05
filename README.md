@@ -75,6 +75,7 @@ Full-featured web interface with:
 ╔══════════════════════════════════════════════════════════════╗
 ║                    FastAPI (port 8001)                        ║
 ║  /auth  /cv  /workflows/stream  /api/jobs                    ║
+║  /api/search  /api/validation  /api/internal                 ║
 ╚═══════════════════════╦══════════════════════════════════════╝
                         ║
                         ▼
@@ -143,7 +144,8 @@ agentic-hire-ai/
 │   │       ├── workflows.py    # /api/workflows/stream (SSE)
 │   │       ├── jobs.py         # /api/jobs (list, delete)
 │   │       ├── search.py       # /api/search
-│   │       └── validation.py   # /api/validation
+│   │       ├── validation.py   # /api/validation
+│   │       └── testing.py      # /api/internal (internal test endpoints)
 │   ├── auth/
 │   │   └── utils.py            # JWT helpers
 │   ├── db/

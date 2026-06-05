@@ -28,7 +28,7 @@ The system includes:
 - **LLM/Vision**: Calls via OpenRouter (supports OpenAI, Google, Anthropic models)
 - **Vector DB**: pgvector (PostgreSQL) with embeddings
 - **PDF Processing**: pdf2image + PIL for vision-based extraction
-- **Web**: BeautifulSoup (scraping), requests (HTTP)
+- **Web**: Playwright (headless Chromium scraping), requests (HTTP)
 - **Config**: pydantic-settings with .env file support
 - **Logging**: loguru
 

@@ -66,7 +66,7 @@ test.describe("user data isolation — authentication boundary", () => {
 
     // Business outcome: authenticated user sees their own workflow entry point
     await expect(
-      page.getByRole("button", { name: /search/i })
+      page.getByRole("main").getByRole("button", { name: /search/i })
     ).toBeVisible();
 
     // Persist auth state — tests that need an authenticated context load
