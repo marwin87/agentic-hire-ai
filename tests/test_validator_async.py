@@ -261,3 +261,75 @@ async def test_is_job_valid_delegates_to_validate_with_reason(
     ):
         result = await validator.is_job_valid(sample_job)
     assert result is True
+
+
+# --- Risk #4: HTTP-200 + expiration-phrase two-stage path ---
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "This position has been filled",
+        "Job no longer available",
+        "This posting has expired",
+        "Application period has ended",
+        "Position closed",
+    ],
+)
+async def test_validate_job_http200_expiration_phrase(
+    validator: JobValidator, sample_job: JobOffer, phrase: str
+) -> None:
+    """HTTP 200 + known expiration phrase in body triggers LLM path and rejects the job.
+
+    This is the production false-negative scenario: the page still loads (200)
+    but the posting is closed. Anti-pattern avoided: testing only 404/410 cases.
+    """
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = f"<html><body>{phrase}</body></html>"
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        validator.checker.ainvoke = AsyncMock(
+            return_value=ExpirationCheck(is_active=False, reason=phrase)
+        )
+
+        result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.JOB_EXPIRED
+
+
+@pytest.mark.asyncio
+async def test_validate_job_llm_retry_exhaustion(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """All LLM retry attempts fail; validate_job_with_reason returns invalid without raising.
+
+    When _invoke_llm_with_retry exhausts retries and returns None, the validator
+    must degrade gracefully to JOB_EXPIRED rather than raise or return valid.
+    """
+    with patch("src.tools.job_validator.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = (
+            "<html><body>Apply now for this exciting role!</body></html>"
+        )
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        validator.checker.ainvoke = AsyncMock(side_effect=Exception("LLM unavailable"))
+
+        with patch("asyncio.sleep", new=AsyncMock()):
+            result = await validator.validate_job_with_reason(sample_job)
+
+    assert result.is_valid is False
+    assert result.reason_code == ValidationFailureReason.JOB_EXPIRED
