@@ -1,10 +1,10 @@
 ---
 change_id: testing-streaming-resilience
 title: Testing streaming resilience
-status: implemented
+status: archived
 created: 2026-06-05
 updated: 2026-06-05
-archived_at: null
+archived_at: 2026-06-05T20:50:48Z
 ---
 
 ## Notes
