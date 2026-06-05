@@ -1,10 +1,10 @@
 ---
 change_id: testing-agent-logic-regression
 title: Agent logic regression tests — validator false negatives, rescout edge, RAG retrieval quality
-status: impl_reviewed
+status: archived
 created: 2026-06-05
 updated: 2026-06-05
-archived_at: null
+archived_at: 2026-06-05T20:12:20Z
 ---
 
 ## Notes
