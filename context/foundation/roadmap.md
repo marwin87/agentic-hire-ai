@@ -3,7 +3,7 @@ project: AgenticHire AI — Production Readiness Refactor
 version: 1
 status: draft
 created: 2026-05-25
-updated: 2026-05-28
+updated: 2026-06-07
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -42,6 +42,11 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-07  | `tailor-api-endpoint`      | ~~invoke evaluation generation via FastAPI~~ (subsumed by S-06 unified workflow) | F-01, F-04           | FR-014         | subsumed  |
 | S-08  | `user-job-list`            | retrieve personal job list (user-filtered)       | F-01, F-02           | FR-007         | done      |
 | F-05  | `docker-compose-hardening` | (foundation) full-stack Docker with health checks | F-01, F-02, F-03, F-04 | FR-010         | done      |
+| S-09  | `orchestrator-api-endpoint` | ~~invoke orchestrate + tailor via dedicated endpoint~~ (subsumed by S-06 unified workflow) | F-01, F-04 | FR-005, FR-012 | subsumed  |
+| F-06  | `ui-replacement`           | (foundation) Next.js 15 frontend with JWT auth, SSE streaming, and agent visualisation — replaces Streamlit | F-01, F-03 | FR-UI          | done      |
+| S-10  | `scout-scraping-upgrade`   | Scout scrapes SPA job portals correctly via Playwright + JSON-LD extraction | F-01         | FR-004, FR-011 | done      |
+| S-11  | `evaluation-persistence`   | match scores and evaluations persisted to DB after workflow completes | F-02, S-06   | FR-007         | done      |
+| S-12  | `e2e-auth-isolation`       | user data isolation verified at browser level (Risk #2) | F-06, S-01   | FR-001, FR-003 | done      |
 
 ## Streams
 
@@ -270,8 +275,6 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Parked
 
-- **Evaluation persistence gap** — The `evaluations` table (`src/db/models.py:112-139`) exists with columns for `match_score`, `orchestrator_reasoning`, `tailor_summary` but is never populated. The unified workflow endpoint (`src/api/routes/workflows.py`) returns orchestrator scores and tailor summaries in the API response JSON only — if the client doesn't store them, they are lost. Fix: after `graph.ainvoke()` completes, iterate `shortlisted_jobs` and write one `Evaluation` row per job via `EvaluationRepository`. The "Discovered Jobs" frontend page (`frontend/app/dashboard/jobs/page.tsx`) would then be able to show match scores and summaries from the DB rather than relying solely on the live response. Why parked: S-06 was shipped without this; it is a polish/completeness item, not a blocker for current MVP use. Prerequisite for: surfacing evaluations in the jobs list (S-08 extension).
-
 - **Phase 2 (Human-in-the-Loop approval workflow)** — Why parked: Deferred pending Phase 1 completion. PRD §Success Criteria §Secondary.
 - **Phase 3 (Resume Tweak Agent)** — Why parked: Feature extension, not MVP infrastructure. PRD §Non-Goals.
 - **Cloud hosting, Kubernetes, serverless infrastructure** — Why parked: Local Docker Compose only for Phase 1. PRD §Non-Goals.
@@ -293,3 +296,12 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-06: unified workflow endpoint via LangGraph** — Archived 2026-05-27 → `context/archive/2026-05-27-graph-workflow-api/`. Endpoint `/api/workflows/search-jobs` unifies Scout → Validate → Orchestrate → Tailor pipeline with [ORCHESTRATOR] logging and per-job error handling. S-07 (tailor) subsumed. Dead endpoints (POST `/api/score_jobs`, POST `/api/evaluate_job/{job_id}`, POST `/api/orchestrate`) removed 2026-05-27 as superseded by unified workflow. Lesson: LangGraph as primary API orchestrator proves superior to separate agent endpoints; consolidation reduces API surface and simplifies client integration.
 - **S-08: retrieve personal job list (user-filtered)** — Archived 2026-05-27 → `context/archive/2026-05-27-user-job-list/`. GET /api/jobs endpoint with pagination, optional match scores, and multi-user isolation. Lesson: —.
 - **F-05: (foundation) Full-stack Docker Compose with all services (FastAPI, PostgreSQL, ChromaDB deprecation), health checks, resource limits, logging setup. Developers can run `docker-compose up` and have a production-like local environment.** — Archived 2026-05-28 → `context/archive/2026-05-28-docker-compose-hardening/`. Lesson: —.
+- **S-09: ~~invoke orchestrate + tailor via dedicated endpoint~~** — Subsumed by S-06 unified workflow. Intermediate `/api/orchestrate` endpoint built then removed 2026-05-27. Archived 2026-05-27 → `context/archive/2026-05-26-orchestrator-api-endpoint/`. Lesson: —.
+- **F-06: (foundation) Next.js 15 frontend with JWT auth, SSE streaming, and agent visualisation — replaces Streamlit** — Archived 2026-05-28 → `context/archive/2026-05-28-ui-replacement/`. Lesson: —.
+- **S-10: Scout scrapes SPA job portals correctly via Playwright + JSON-LD extraction** — Replaced BeautifulSoup/httpx scraper; fixes empty-HTML-shell failure on modern SPA portals. Archived 2026-05-29 → `context/archive/2026-05-29-scout-scraping-upgrade/`. Lesson: —.
+- **S-11: match scores and evaluations persisted to DB after workflow completes** — Closes the gap between live API response and DB; enables jobs list to show scores from DB. Archived 2026-06-01 → `context/archive/2026-06-01-evaluation-persistence/`. Lesson: —.
+- **S-12: user data isolation verified at browser level (Risk #2)** — E2E Playwright spec proves User B's session cannot see User A's jobs or CV in the rendered UI. Archived 2026-06-04 → `context/archive/2026-06-03-e2e-auth-isolation/`. Lesson: —.
+- **Test Phase 1 — Data integrity** — Integration tests: evaluation writes survive to DB, user_id isolation holds under two-user requests (Risks #1, #2). Archived 2026-06-01 → `context/archive/2026-06-01-testing-data-integrity/`. See `context/foundation/test-plan.md` §3.
+- **Test Phase 2 — Agent logic regression** — Unit + integration tests: validator false negatives, rescout edge errors, RAG retrieval quality drift (Risks #4, #5, #6). Archived 2026-06-05 → `context/archive/2026-06-05-testing-agent-logic-regression/`. See `context/foundation/test-plan.md` §3.
+- **Test Phase 3 — Streaming resilience** — Integration tests: orphan tasks cancel on SSE disconnect, competing writes handled by upsert (Risk #3). Archived 2026-06-05 → `context/archive/2026-06-05-testing-streaming-resilience/`. See `context/foundation/test-plan.md` §3.
+- **Test Phase 4 — Security gate** — Unit tests: no secrets or tracebacks escape into error responses or logs; SecretStr migration (Risk #7). Archived 2026-06-07 → `context/archive/2026-06-05-testing-security-gate/`. See `context/foundation/test-plan.md` §3.
