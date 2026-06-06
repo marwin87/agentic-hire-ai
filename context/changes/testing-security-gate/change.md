@@ -1,7 +1,7 @@
 ---
 change_id: testing-security-gate
 title: Testing security gate
-status: implementing
+status: impl_reviewed
 created: 2026-06-05
 updated: 2026-06-07
 archived_at: null

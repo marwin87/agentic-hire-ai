@@ -52,6 +52,10 @@ async def _ingest_cv_background(
         async with factory() as session:
             cv_file = await session.get(CVFile, file_id)
             if cv_file:
+                # Intentional: ValueError messages are LLM-generated CV rejection
+                # reasons (e.g. "text too short") — user-safe, not secrets.
+                # Accepted risk: if future code ever raises ValueError with provider
+                # error text embedded, this would leak. See testing-security-gate plan.
                 cv_file.ingestion_error = str(e)  # type: ignore[assignment]
                 await session.commit()
         logger.warning(f"[CV] Ingestion rejected for file {file_id}: {e}")
@@ -203,12 +207,7 @@ async def upload_cv(
         raise HTTPException(status_code=500, detail="Error storing file metadata")
 
     # Build vector manager and enqueue ingestion — returns immediately
-    api_key_value = (
-        config.openrouter_api_key.get_secret_value()
-        if config.openrouter_api_key
-        else None
-    )
-    api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
+    api_key: SecretStr | None = config.openrouter_api_key
 
     vision_model = ChatOpenAI(
         model=config.vision_model_name,

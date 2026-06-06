@@ -349,7 +349,7 @@ endpoints' happy paths; Phase 4 adds only the error-path security assertion.
 
 #### Manual
 
-- [ ] 1.3 Confirm lines 144, 269, 513 in workflows.py use static strings (no str(e))
+- [x] 1.3 Confirm lines 144, 269, 513 in workflows.py use static strings (no str(e))
 
 ### Phase 2: SecretStr migration + startup log redaction
 
@@ -360,8 +360,8 @@ endpoints' happy paths; Phase 4 adds only the error-path security assertion.
 
 #### Manual
 
-- [ ] 2.3 `repr(config.openrouter_api_key)` shows `SecretStr('**********')` in REPL
-- [ ] 2.4 Startup log shows `host:port/dbname` only (no password)
+- [x] 2.3 `repr(config.openrouter_api_key)` shows `SecretStr('**********')` in REPL
+- [x] 2.4 Startup log shows `host:port/dbname` only (no password)
 
 ### Phase 3: Unit tests
 
@@ -373,4 +373,4 @@ endpoints' happy paths; Phase 4 adds only the error-path security assertion.
 
 #### Manual
 
-- [ ] 3.4 Deliberate regression confirms test_workflow_error_does_not_leak_exception_in_response catches the leak when str(e) is re-introduced
+- [x] 3.4 Deliberate regression confirms test_workflow_error_does_not_leak_exception_in_response catches the leak when str(e) is re-introduced

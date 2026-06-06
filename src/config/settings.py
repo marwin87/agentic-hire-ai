@@ -71,6 +71,7 @@ class AppConfig(BaseSettings):
     )
 
     # Database settings
+    # Dev-only default — MUST be overridden via AGENTIC_HIRE_DATABASE_URL in non-dev envs.
     database_url: SecretStr = Field(
         default=SecretStr(
             "postgresql+asyncpg://agentic_hire:dev_password@localhost:5432/agentic_hire"

@@ -24,6 +24,16 @@
 
 **Applies to**: `src/agents/scout.py`, `src/tools/job_validator.py`, any future agent or tool that wraps LLM or external-API `await` calls in broad exception blocks.
 
+## Dev credentials in source-code defaults
+
+**Context**: `src/config/settings.py` — AppConfig database_url field
+
+**Problem**: `database_url` default value embeds `dev_password` in source code. `SecretStr` wrapping protects `repr()` output but does not hide the value from anyone reading the file. If the project is ever open-sourced or the repo is shared, the default credential is exposed even though the field is nominally "secret".
+
+**Rule**: Dev-only credentials used as pydantic-settings defaults must be labelled as such with a comment AND the `.env.example` must require the variable to be overridden in all non-dev environments. Never use a credential that resembles a real production password as a source-code default.
+
+**Applies to**: Any AppConfig field typed as SecretStr with a default that includes a password, token, or key fragment.
+
 ## ContextVar propagation through async coroutine chains vs. spawned tasks
 
 **Context**: `src/utils/progress.py` + streaming endpoint in `src/api/routes/workflows.py`
