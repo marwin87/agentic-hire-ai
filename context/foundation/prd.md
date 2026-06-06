@@ -39,7 +39,7 @@ The refactoring is not independent features; the enhancements form a strict depe
 - Human-in-the-Loop (HITL) dashboard for paused workflows requires an asynchronous backend to handle state interruption.
 - Asynchronous backend state persistence requires a relational database (not ChromaDB).
 - Multi-user state storage requires access control to prevent data leaks.
-- High-value compute agents (Resume Tweak) require auth to prevent unauthorized API token exploitation.
+- High-value compute agents require auth to prevent unauthorized API token exploitation.
 
 **Why now**: The current architecture blocks scaling beyond a demo. A production system requires multi-tenant isolation, persistent state, and secure access control. These are foundational — adding features without them is technically unsustainable.
 
@@ -163,7 +163,7 @@ And: The system parses the CV, generates embeddings, and stores them in pgvector
 
 The binding problem introduced exactly one new domain rule: **user data isolation**. Every job search, CV embedding, and match score is tagged with `user_id` in the database. One user cannot see another user's data.
 
-The scoring algorithm (0.0–1.0 relevance) and agent reasoning remain unchanged. No new decision logic is being introduced in Phase 1. Phase 2 (HITL) will add an approval workflow; Phase 3 (Resume Tweak) will add a new agent. Both are future phases.
+The scoring algorithm (0.0–1.0 relevance) and agent reasoning remain unchanged. No new decision logic is being introduced in Phase 1. Phase 2 (HITL) will add an approval workflow.
 
 ---
 
@@ -192,7 +192,6 @@ Individual workspace model only. No admin roles, no shared access, no organizati
 - No API rate-limiting or usage monitoring (local-only deployment)
 - No analytics, telemetry, or observability
 - Phase 2 (Human-in-the-Loop approval workflow) — optional, not MVP
-- Phase 3 (Resume Tweak Agent) — optional, not MVP
 - No migration tool for existing ChromaDB data
 - No reverse-compatibility with CLI or Streamlit UI
 
@@ -212,7 +211,6 @@ Individual workspace model only. No admin roles, no shared access, no organizati
 
 6. **Monitoring & alerting post-launch** — Beyond the 4-week Phase 1 MVP, how will the deployed system be monitored? Logging strategy, error tracking, performance dashboards?
 
-7. **Resume Tweak Agent output format (Phase 3)** — Markdown diff, bulleted list, or narrative? Deferred to Phase 3 scoping.
 
 ---
 

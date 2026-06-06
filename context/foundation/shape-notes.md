@@ -31,12 +31,11 @@ The refactoring is not a collection of independent features; the enhancements fo
 - Human-in-the-Loop (HITL) dashboard for paused workflows requires an asynchronous backend to handle state interruption.
 - Asynchronous backend state persistence requires a relational database (not ChromaDB).
 - Multi-user state storage requires access control to prevent data leaks.
-- High-value compute agents (Resume Tweak) require auth to prevent unauthorized API token exploitation.
+- High-value compute agents require auth to prevent unauthorized API token exploitation.
 
 **The architectural shift**:
 1. **Phase 1 (Bedrock)**: Migrate from Streamlit/ChromaDB/CLI to FastAPI + PostgreSQL+pgvector + JWT auth + Docker Compose. The agent workflow remains unchanged; execution becomes asynchronous and multi-user.
 2. **Phase 2 (Workflow)**: Introduce HITL breakpoint using LangGraph's PostgresSaver state interruption. After Scout and Orchestrator, the graph pauses; user approves selected jobs; graph resumes to Tailor.
-3. **Phase 3 (Capability)**: Add Resume Tweak Agent downstream of user approval — generates ATS-optimized resume refinement suggestions per job.
 
 **What stays intact**:
 - Core agent logic, prompts, scoring algorithms
@@ -100,7 +99,6 @@ Acknowledged on 2026-05-19: User understands and accepts the sustained-effort co
 
 - Frontend framework choice (React vs Next.js vs other)?
 - Database migration strategy for any existing data?
-- Exact Resume Tweak Agent output format (markdown diff, bulleted list, other)?
 - Monitoring/logging strategy post-deployment?
 
 ---
@@ -203,7 +201,6 @@ The scoring algorithm (0.0–1.0 relevance) and agent reasoning remain unchanged
 - No API rate-limiting or usage monitoring
 - No analytics, telemetry, or observability
 - Phase 2 (Human-in-the-Loop approval workflow) — optional, not MVP
-- Phase 3 (Resume Tweak Agent) — optional, not MVP
 - No migration tool for existing ChromaDB data
 - No reverse-compatibility with CLI or Streamlit UI
 

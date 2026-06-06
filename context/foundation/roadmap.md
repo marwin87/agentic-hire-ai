@@ -271,12 +271,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 4. **Q4: Latency & uptime targets** — Is sub-2-second end-to-end acceptable? 99.9% uptime required? (Local-only deployment, low SLA needed.) Owner: user. Block: no.
 
-5. **Q5: Resume Tweak Agent output format (Phase 3)** — Markdown diff, bulleted list, narrative? (Phase 3 work, not Phase 1.) Owner: user. Block: no.
 
 ## Parked
 
 - **Phase 2 (Human-in-the-Loop approval workflow)** — Why parked: Deferred pending Phase 1 completion. PRD §Success Criteria §Secondary.
-- **Phase 3 (Resume Tweak Agent)** — Why parked: Feature extension, not MVP infrastructure. PRD §Non-Goals.
 - **Cloud hosting, Kubernetes, serverless infrastructure** — Why parked: Local Docker Compose only for Phase 1. PRD §Non-Goals.
 - **Enterprise RBAC, team spaces, multi-organization support** — Why parked: Individual workspace model only. PRD §Non-Goals.
 - **API rate-limiting, usage monitoring, analytics, telemetry** — Why parked: Local deployment, no scale concerns. PRD §Non-Goals.
