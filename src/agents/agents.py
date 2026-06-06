@@ -27,7 +27,11 @@ class AgentFactory:
         self.user_id = user_id or uuid4()
 
         # Centralized OpenRouter Config
-        api_key_value = config.openrouter_api_key
+        api_key_value = (
+            config.openrouter_api_key.get_secret_value()
+            if config.openrouter_api_key
+            else None
+        )
         api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
 
         # Initialize the shared components

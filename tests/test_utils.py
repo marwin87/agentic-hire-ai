@@ -1,4 +1,5 @@
 import pytest
+from pydantic import SecretStr
 from unittest.mock import MagicMock, patch, ANY
 from src.utils import JobParser, JobOfferList, JobOffer
 from typing import Generator, Tuple, Any
@@ -10,7 +11,7 @@ from unittest.mock import MagicMock as MagicMockType
 def mock_config() -> Generator[MagicMock, None, None]:
     with patch("src.utils.config") as mock_cfg:
         mock_cfg.openrouter_base_url = "http://mock-openrouter.com"
-        mock_cfg.openrouter_api_key = "mock-key"
+        mock_cfg.openrouter_api_key = SecretStr("mock-key")
         yield mock_cfg
 
 

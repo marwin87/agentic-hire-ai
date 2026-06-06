@@ -67,7 +67,7 @@ def encode_token(
 
     encoded_jwt = jwt.encode(
         to_encode,
-        config.jwt_secret_key,
+        config.jwt_secret_key.get_secret_value(),
         algorithm=config.jwt_algorithm,
     )
 
@@ -88,7 +88,7 @@ def decode_token(token: str) -> dict[str, Any]:
     """
     payload = jwt.decode(
         token,
-        config.jwt_secret_key,
+        config.jwt_secret_key.get_secret_value(),
         algorithms=[config.jwt_algorithm],
     )
     return payload

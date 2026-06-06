@@ -19,7 +19,11 @@ class JobParser:
 
     def __init__(self, model_name: str = "gpt-4o-mini"):
         # Cheaper/faster model for parsing tasks
-        api_key_value = config.openrouter_api_key
+        api_key_value = (
+            config.openrouter_api_key.get_secret_value()
+            if config.openrouter_api_key
+            else None
+        )
         if api_key_value:
             api_key: SecretStr | None = SecretStr(api_key_value)
         else:

@@ -19,7 +19,7 @@ async def init_db(config: AppConfig) -> None:
     global _engine, _session_factory
 
     _engine = create_async_engine(
-        config.database_url,
+        config.database_url.get_secret_value(),
         echo=config.debug_mode,
         future=True,
         pool_pre_ping=True,

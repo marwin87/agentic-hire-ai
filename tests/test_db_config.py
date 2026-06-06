@@ -8,7 +8,10 @@ def test_database_url_configured() -> None:
     """Test that database URL is properly configured."""
     config = AppConfig()
     assert config.database_url
-    assert "postgresql" in config.database_url or "asyncpg" in config.database_url
+    assert (
+        "postgresql" in config.database_url.get_secret_value()
+        or "asyncpg" in config.database_url.get_secret_value()
+    )
 
 
 def test_embedding_dimension_configured() -> None:

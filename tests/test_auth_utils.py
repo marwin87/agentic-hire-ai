@@ -110,7 +110,9 @@ class TestJWTEncoding:
         data = {"user_id": "123"}
         token = encode_token(data, expires_in_minutes=60, token_type="access")
         decoded = pyjwt.decode(
-            token, config.jwt_secret_key, algorithms=[config.jwt_algorithm]
+            token,
+            config.jwt_secret_key.get_secret_value(),
+            algorithms=[config.jwt_algorithm],
         )
         assert decoded["type"] == "access"
 
@@ -119,7 +121,9 @@ class TestJWTEncoding:
         data = {"user_id": "123"}
         token = encode_token(data, expires_in_minutes=43200, token_type="refresh")
         decoded = pyjwt.decode(
-            token, config.jwt_secret_key, algorithms=[config.jwt_algorithm]
+            token,
+            config.jwt_secret_key.get_secret_value(),
+            algorithms=[config.jwt_algorithm],
         )
         assert decoded["type"] == "refresh"
 
@@ -147,7 +151,9 @@ class TestJWTEncoding:
             }
         )
         expired_token = pyjwt.encode(
-            to_encode, config.jwt_secret_key, algorithm=config.jwt_algorithm
+            to_encode,
+            config.jwt_secret_key.get_secret_value(),
+            algorithm=config.jwt_algorithm,
         )
 
         with pytest.raises(pyjwt.ExpiredSignatureError):

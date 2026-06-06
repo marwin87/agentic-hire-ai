@@ -139,7 +139,9 @@ class TestTokenExpiration:
             "type": "access",
         }
         expired_token = pyjwt.encode(
-            to_encode, config.jwt_secret_key, algorithm=config.jwt_algorithm
+            to_encode,
+            config.jwt_secret_key.get_secret_value(),
+            algorithm=config.jwt_algorithm,
         )
 
         with pytest.raises(pyjwt.ExpiredSignatureError):

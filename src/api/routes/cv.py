@@ -203,7 +203,11 @@ async def upload_cv(
         raise HTTPException(status_code=500, detail="Error storing file metadata")
 
     # Build vector manager and enqueue ingestion — returns immediately
-    api_key_value = config.openrouter_api_key
+    api_key_value = (
+        config.openrouter_api_key.get_secret_value()
+        if config.openrouter_api_key
+        else None
+    )
     api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
 
     vision_model = ChatOpenAI(

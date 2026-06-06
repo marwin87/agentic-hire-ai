@@ -141,7 +141,7 @@ async def search_jobs_workflow(
                 all_jobs=[],
                 shortlisted_jobs=[],
                 rejected_jobs=[],
-                status=f"Graph execution failed: {str(e)}",
+                status="Graph execution failed",
                 error_count=1,
             )
 
@@ -266,7 +266,7 @@ async def search_jobs_workflow(
             all_jobs=[],
             shortlisted_jobs=[],
             rejected_jobs=[],
-            status=f"Workflow failed: {str(e)}",
+            status="Workflow failed",
             error_count=1,
         )
 
@@ -510,7 +510,11 @@ async def search_jobs_stream(
                     exc_info=True,
                 )
                 await q.put(
-                    {"type": "error", "node": "workflow", "data": {"message": str(e)}}
+                    {
+                        "type": "error",
+                        "node": "workflow",
+                        "data": {"message": "Workflow error"},
+                    }
                 )
             finally:
                 await q.put(None)  # sentinel — signals generator to stop

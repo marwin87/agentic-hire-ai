@@ -28,7 +28,9 @@ async def lifespan(app: FastAPI) -> Any:
     # Startup: initialize database
     logger.info("FastAPI startup: initializing database...")
     await init_db(config)
-    logger.info(f"Database initialized: {config.database_url}")
+    logger.info(
+        f"Database initialized: {config.database_url.get_secret_value().split('@')[-1]}"
+    )
     logger.info("Note: Run 'alembic upgrade head' to apply pending migrations")
 
     # Startup: initialize agent factory singleton

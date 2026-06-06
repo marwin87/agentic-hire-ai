@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, SecretStr
 from typing import Optional
 import secrets
 
@@ -31,7 +31,7 @@ class AppConfig(BaseSettings):
 
     # API configuration
     openrouter_base_url: str = Field("https://openrouter.ai/api/v1")
-    openrouter_api_key: Optional[str] = None
+    openrouter_api_key: Optional[SecretStr] = None
     oriosearch_base_url: str = Field("http://localhost:8000")
 
     # AgenticHire AI specific settings
@@ -71,8 +71,10 @@ class AppConfig(BaseSettings):
     )
 
     # Database settings
-    database_url: str = Field(
-        "postgresql+asyncpg://agentic_hire:dev_password@localhost:5432/agentic_hire",
+    database_url: SecretStr = Field(
+        default=SecretStr(
+            "postgresql+asyncpg://agentic_hire:dev_password@localhost:5432/agentic_hire"
+        ),
         description="PostgreSQL connection string with asyncpg driver.",
     )
     embedding_dimension: int = Field(
@@ -106,7 +108,7 @@ class AppConfig(BaseSettings):
     embedded_model_name: str = Field("text-embedding-3-small")
 
     # JWT settings
-    jwt_secret_key: str = Field(
+    jwt_secret_key: SecretStr = Field(
         ...,
         description="Secret key for JWT signing (HS256). Must be set in .env as AGENTIC_HIRE_JWT_SECRET_KEY. Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'",
     )

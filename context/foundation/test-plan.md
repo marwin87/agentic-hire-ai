@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-06-05 (Phase 3 change opened)
+> Last updated: 2026-06-07 (Phase 4 implemented)
 
 ---
 
@@ -76,8 +76,8 @@ orchestrator updates Status as artifacts appear on disk.
 |---|---|---|---|---|---|---|
 | 1 | Data integrity | Prove evaluation writes survive to DB and user_id isolation holds under two-user requests | #1, #2 | integration (real async DB session, two-user fixture) | archived | context/archive/2026-06-01-testing-data-integrity/ |
 | 2 | Agent logic regression | Catch validator false negatives, rescout edge errors, and RAG retrieval quality drift | #4, #5, #6 | unit + integration | archived | context/archive/2026-06-05-testing-agent-logic-regression/ |
-| 3 | Streaming resilience | Prove orphan tasks cancel on SSE disconnect and competing writes are handled by the upsert | #3 | integration (disconnect simulation) | change opened | context/changes/testing-streaming-resilience/ |
-| 4 | Security gate | Prove no secrets or tracebacks escape into error responses or logs | #7 | unit (response + log inspection) | not started | — |
+| 3 | Streaming resilience | Prove orphan tasks cancel on SSE disconnect and competing writes are handled by the upsert | #3 | integration (disconnect simulation) | archived | context/archive/2026-06-05-testing-streaming-resilience/ |
+| 4 | Security gate | Prove no secrets or tracebacks escape into error responses or logs | #7 | unit (response + log inspection) | implemented | context/changes/testing-security-gate/ |
 
 ---
 
@@ -139,12 +139,41 @@ TBD — see §3 Phase 3 (disconnect simulation pattern established there).
 
 ### 6.5 Adding a security / response-inspection test
 
-TBD — see §3 Phase 4 (no-secrets-in-response pattern established there).
+Pattern established in Phase 4 (`tests/unit/test_security_gate.py`).
+
+**Key elements:**
+- Use `app.dependency_overrides[get_current_user]` and `app.dependency_overrides[get_db]` to bypass auth/DB.
+  Always clear overrides in a `finally` block.
+- Patch `src.api.main.init_db` and `src.api.main.get_agent_factory` when using
+  `AsyncClient + ASGITransport(app=app)` as a context manager (triggers the lifespan).
+- For the sync endpoint: inject via `AsyncClient`; assert `FAKE_SECRET not in response.text`.
+- For the streaming endpoint: call the route handler directly (same pattern as §6.4);
+  collect `body_iterator` chunks; assert no chunk contains the fake string.
+- For the global exception handler: call `global_exception_handler(mock_request, exc)` directly;
+  inspect `json.loads(response.body)`.
+- For startup-log inspection: add a `logger.add(lambda msg: ...)` sink before entering the
+  lifespan context; remove it in a `finally` block; assert the password substring is absent.
+- Use a recognisable fake key string (e.g. `"sk-or-v1-FAKE-SECRET"`) so the assertion is
+  unambiguous and the deliberate-regression check is easy to perform manually.
 
 ### 6.6 Per-rollout-phase notes
 
-(Fills in as phases ship — surprises, fixture decisions, and reusable
-patterns discovered during implementation.)
+**Phase 4 — Security gate (2026-06-07)**
+
+- Three `str(e)` response-body leaks were all in `workflows.py`; no other route files
+  required changes.
+- Migrating `AppConfig` fields to `SecretStr` required fixing the field default:
+  wrapping the plain-string default in `SecretStr(...)` satisfies mypy strict mode
+  (pydantic-settings coerces at runtime, but mypy sees the `Field(str)` type, not the
+  coercion).
+- Existing tests that called `pyjwt.encode/decode` with `config.jwt_secret_key` directly
+  needed `.get_secret_value()` added — a mechanical find-and-replace across two test files.
+- The `test_utils.py` mock fixture for `openrouter_api_key` needed to return `SecretStr("mock-key")`
+  instead of a plain string so `.get_secret_value()` is available on the mock value.
+- Deliberate-regression check for the streaming test: use an `async def` with `raise` before
+  `yield` — Python still treats it as an async generator (the `yield` is unreachable but present),
+  and the first `__anext__()` call raises the exception into the `except Exception` block in
+  `run_graph()`, which then puts the sanitised error event into the SSE queue.
 
 ---
 
