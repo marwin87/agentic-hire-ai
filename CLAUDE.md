@@ -4,6 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Git Workflow
+
+**Commit Protocol**: When making code changes, always stage files with `git add` but **do NOT auto-commit**. Instead:
+
+1. Stage changes: `git add <files>`
+2. Show the user:
+   ```
+   Changes are ready to commit:
+   Commit message: <proposed-message>
+   ```
+3. Wait for user approval before running `git commit`
+
+This gives you control over what gets committed and the final commit message. Only commit if you explicitly approve or say "go ahead and commit".
+
+**Rationale**: Auto-committing can bundle unrelated changes or use suboptimal messages. You own the git history.
+
+**Exception**: Skip this if you explicitly say "commit as is" or "go ahead and commit" in your message.
+
 ## Project Overview
 
 **AgenticHire AI** is an autonomous multi-agent job application system using LangGraph. It discovers jobs, validates them, scores their relevance to a candidate's CV, and generates tailored application insights. The system combines RAG (Retrieval-Augmented Generation) with Vision-based PDF parsing to understand CVs semantically.
@@ -23,26 +41,7 @@ The system includes:
 
 ## Development Setup
 
-### Dependencies
-- **Orchestration**: LangGraph
-- **LLM/Vision**: Calls via OpenRouter (supports OpenAI, Google, Anthropic models)
-- **Vector DB**: pgvector (PostgreSQL) with embeddings
-- **PDF Processing**: pdf2image + PIL for vision-based extraction
-- **Web**: Playwright (headless Chromium scraping), requests (HTTP)
-- **Config**: pydantic-settings with .env file support
-- **Logging**: loguru
-
-### Environment Setup
-```bash
-# Install uv (one-time)
-pip install uv
-
-# Sync dependencies (creates .venv automatically)
-uv sync
-
-# Verify installation
-uv run python main.py --help
-```
+For installation, environment setup, and run commands, see @README.md.
 
 ### Configuration
 All settings in `src/config/settings.py` (class `AppConfig`). Override via:
@@ -62,30 +61,6 @@ All settings in `src/config/settings.py` (class `AppConfig`). Override via:
 - `initial_prompt`: Target criteria for job filtering (free-form text)
 - `cv_file_path`: Path to CV PDF (default: `data/cv/sample_cv.pdf`)
 - `*_model_name`: Different models per agent (scout uses faster model, tailor uses higher temperature)
-
-## Running the Application
-
-### CLI Mode (main.py)
-```bash
-uv run python main.py
-```
-Executes the full workflow and prints results. Ingests CV only on first run (hash-based caching).
-
-## Docker Deployment
-
-Local development uses Docker Compose. See `context/foundation/docker-practices.md` for comprehensive guidance.
-
-```bash
-docker-compose up
-```
-
-**Files**:
-- `Dockerfile` — Multi-stage build (Python 3.13, poppler-utils for PDF parsing)
-- `docker-compose.yml` — Single app service with volume mounts
-- `.dockerignore` — Build context optimization
-
-**Phase 1 preparation** (FastAPI + PostgreSQL):
-When you implement Phase 1, the docker-practices guide includes patterns for multi-service orchestration (FastAPI backend, PostgreSQL, pgvector). The current Dockerfile architecture is forward-compatible with that refactor.
 
 ## Testing
 
@@ -197,36 +172,6 @@ Logic: rescout if valid_jobs < max_offers AND scout_runs < max_scout_runs AND fo
 - `JobParser`: LLM-based extraction of raw search results into JobOffer Pydantic models
 - `JobOfferList`: Container for structured output
 
-## File Structure Reference
-
-```
-agentic-hire-ai/
-├── src/
-│   ├── agents/
-│   │   ├── agents.py           # AgentFactory
-│   │   ├── scout.py            # Job discovery agent
-│   │   ├── orchestrator.py      # Scoring/matching agent
-│   │   └── tailor.py           # Content generation agent
-│   ├── tools/
-│   │   ├── search.py           # job_search_tool (OrioSearch)
-│   │   ├── scrape.py           # scrape_webpage_tool (BeautifulSoup)
-│   │   ├── job_validator.py    # HTTP + LLM expiration check
-│   │   └── vectordb.py         # CVVectorManager (PDF→embeddings→pgvector)
-│   ├── schema/
-│   │   └── state.py            # AgenticHireState TypedDict + JobOffer model
-│   ├── config/
-│   │   ├── settings.py         # AppConfig via pydantic-settings
-│   │   └── logging.py          # loguru setup
-│   ├── graph.py                # LangGraph definition + conditional logic
-│   └── utils.py                # JobParser utility
-├── main.py                     # CLI entry point
-├── tests/                      # pytest fixtures + mocked tests
-├── data/
-│   └── cv/                     # PDF resume storage
-├── pyproject.toml              # uv dependency declaration
-└── uv.lock                     # Locked dependency versions
-```
-
 ## Key Design Patterns
 
 ### Annotated State Fields with Operators
@@ -280,24 +225,6 @@ API keys for LangFuse already in `.env` (LANGFUSE_*). Hook into LangChain callba
 uv run black src/ tests/ main.py
 ```
 
-## Git Workflow
-
-**Commit Protocol**: When making code changes, always stage files with `git add` but **do NOT auto-commit**. Instead:
-
-1. Stage changes: `git add <files>`
-2. Show the user:
-   ```
-   Changes are ready to commit:
-   Commit message: <proposed-message>
-   ```
-3. Wait for user approval before running `git commit`
-
-This gives you control over what gets committed and the final commit message. Only commit if you explicitly approve or say "go ahead and commit".
-
-**Rationale**: Auto-committing can bundle unrelated changes or use suboptimal messages. You own the git history.
-
-**Exception**: Skip this if you explicitly say "commit as is" or "go ahead and commit" in your message.
-
 ## Notes for Future Development
 
 - **CV Ingestion is slow** (Vision LLM on all PDF pages): Consider caching more aggressively or lazy-loading embeddings
@@ -305,50 +232,3 @@ This gives you control over what gets committed and the final commit message. On
 - **Rate limiting**: No built-in throttling on API calls; add if scaling to many scout runs
 - **Pydantic v2 migration**: Using latest pydantic-settings; be careful with validator decorators if updating
 
-<!-- BEGIN @przeprogramowani/10x-cli -->
-
-## 10xDevs AI Toolkit - Module 2, Lesson 5
-
-Scale the single-change cycle into parallel work with **worktrees, goal-directed delegation, and multi-session orchestration**:
-
-```
-worktree per change -> /goal or claude -p -> PR -> review -> merge
-```
-
-The lesson focus is safe throughput: isolated contexts, choosing the right execution mode, and capping parallelism at review capacity.
-
-### Task Router - Where to start
-
-| Skill | Use it when |
-| --- | --- |
-| **Code isolation** | |
-| `git worktree add` | You need a separate working directory for a parallel change. One change per worktree, one fresh agent context per worktree. |
-| **Complex changes** | |
-| `/10x-implement <change-id> phase <n>` | The change has multiple phases, needs manual gates, or benefits from interactive decision-making during execution. |
-| **Simple changes** | |
-| `/goal` | You have a clear, bounded task and want goal-directed delegation. The agent works autonomously toward the stated goal with a stop condition. |
-| `claude -p` | You want headless execution for a well-defined task. The Ralph Wiggum loop (run, check, retry) is the universal autonomous pattern. |
-| **Multi-session orchestration** | |
-| Superset / Conductor / Antigravity / VS Code Agent View | You are running multiple agent sessions in parallel and need visibility, coordination, or session management across them. |
-
-### Parallel work rules
-
-- One change per worktree or isolated workspace. One fresh agent context per change.
-- Choose interactive `/10x-implement` for complex changes, `/goal` or `claude -p` for simple ones.
-- Parallelism is capped by review capacity. More agents without review means more unreviewed code, not higher throughput.
-- The quality pain from faster shipping is intentional — it bridges into Module 3 testing gates.
-
-### Lesson boundaries
-
-- Do not reteach interactive `/10x-implement` or `/10x-impl-review`; those are Lessons 2 and 3.
-- Do not introduce testing strategy here. The quality pain is the motivation for Module 3.
-- Worktrees are a mechanism for isolation, not the topic of a full git tutorial.
-
-### Paths used by this lesson
-
-- `context/changes/<change-id>/` - active change folder
-- `context/changes/<change-id>/plan.md` - implementation input for any execution mode
-
-Skills must not write to `context/archive/`. Archived changes are immutable; if a resolved target path starts with `context/archive/`, abort with: "This change is archived. Open a new change with `/10x-new` instead."
-
-<!-- END @przeprogramowani/10x-cli -->
