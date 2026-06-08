@@ -4,9 +4,30 @@
 
 An AI-powered agent system that autonomously searches, validates, evaluates, and tailors job applications using a multi-agent LangGraph architecture combined with RAG and Vision-based CV understanding.
 
-<a href="data/AgenticHireAI_workflow_ui.jpg">
-  <img src="data/AgenticHireAI_workflow_ui.jpg" alt="AgenticHire AI UI Example" width="240" height="240"/>
-</a>
+## Preview
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="data/preview/prev_main.jpg" width="420" alt="Dashboard — CV upload and workflow controls" /><br/>
+      <em>Dashboard — CV upload and workflow controls</em>
+    </td>
+    <td align="center">
+      <img src="data/preview/prev_search.jpg" width="420" alt="Search — job criteria and score threshold configuration" /><br/>
+      <em>Search — job criteria and score threshold</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="data/preview/prev_results.jpg" width="420" alt="Results — real-time agent workflow with streaming SSE tiles" /><br/>
+      <em>Results — real-time agent workflow streaming</em>
+    </td>
+    <td align="center">
+      <img src="data/preview/prev_my_jobs.jpg" width="420" alt="Job history — match scores and per-job actions" /><br/>
+      <em>Job history — match scores and per-job actions</em>
+    </td>
+  </tr>
+</table>
 
 ---
 
