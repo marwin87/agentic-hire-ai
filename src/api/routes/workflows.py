@@ -20,7 +20,7 @@ from src.api.schemas import (
 )
 from src.api.vectordb_async import get_cv_context_async
 from src.db import EvaluationRepository, Job, JobRepository, User
-from src.graph import build_graph
+from src.graph import get_graph
 from src.schema.state import AgenticHireState
 from src.utils.progress import set_progress_queue
 
@@ -128,7 +128,7 @@ async def search_jobs_workflow(
         # Invoke the graph
         try:
             logger.info("[ORCHESTRATOR] Invoking LangGraph workflow")
-            graph = build_graph()
+            graph = get_graph()
             result = await graph.ainvoke(state)
             logger.info("[ORCHESTRATOR] Graph execution complete")
         except Exception as e:
@@ -170,7 +170,7 @@ async def search_jobs_workflow(
                 await JobRepository.create_or_update(session, job_db)
             for job in shortlisted_jobs:
                 eval_data = applications.get(job.id, {})
-                tailor_summary = eval_data.get("founded_job_offer") or None
+                tailor_summary = eval_data.get("found_job_offer") or None
                 await EvaluationRepository.upsert(
                     session,
                     user_id=user.id,
@@ -198,7 +198,7 @@ async def search_jobs_workflow(
         # Process shortlisted jobs (should have evaluations from tailor)
         for job in shortlisted_jobs:
             evaluation_data = applications.get(job.id, {})
-            evaluation = evaluation_data.get("founded_job_offer", "")
+            evaluation = evaluation_data.get("found_job_offer", "")
 
             job_result = OrchestrateJobResult(
                 id=job.id,
@@ -384,7 +384,7 @@ async def search_jobs_stream(
 
         async def run_graph() -> None:
             try:
-                graph = build_graph()
+                graph = get_graph()
                 logger.info("[STREAM] Starting graph.astream()")
                 async for event in graph.astream(initial_state, stream_mode="updates"):
                     for node_name, node_update in event.items():
@@ -428,7 +428,7 @@ async def search_jobs_stream(
                         await JobRepository.create_or_update(session, job_db)
                     for job in acc["shortlisted_jobs"]:
                         eval_data = acc["applications"].get(job.id, {})
-                        tailor_summary = eval_data.get("founded_job_offer") or None
+                        tailor_summary = eval_data.get("found_job_offer") or None
                         await EvaluationRepository.upsert(
                             session,
                             user_id=user.id,
@@ -460,7 +460,7 @@ async def search_jobs_stream(
                         url=job.url,
                         match_score=job.match_score,
                         analysis=job.analysis,
-                        evaluation=eval_data.get("founded_job_offer", ""),
+                        evaluation=eval_data.get("found_job_offer", ""),
                         error=None,
                     )
                     all_job_results.append(result)

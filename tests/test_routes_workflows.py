@@ -65,7 +65,7 @@ def _graph_result(shortlisted: list[JobOffer]) -> dict:
         "rejected_jobs": [],
         "valid_jobs": shortlisted,
         "applications": {
-            job.id: {"founded_job_offer": f"Tailor summary for {job.id}"}
+            job.id: {"found_job_offer": f"Tailor summary for {job.id}"}
             for job in shortlisted
         },
     }
@@ -81,13 +81,13 @@ def _graph_result(shortlisted: list[JobOffer]) -> dict:
     "src.api.routes.workflows.JobRepository.create_or_update", new_callable=AsyncMock
 )
 @patch("src.api.routes.workflows.EvaluationRepository.upsert", new_callable=AsyncMock)
-@patch("src.api.routes.workflows.build_graph")
+@patch("src.api.routes.workflows.get_graph")
 @patch("src.api.routes.workflows.get_cv_context_async", new_callable=AsyncMock)
 @patch("src.api.routes.workflows.AgentFactory")
 async def test_workflow_persists_evaluations_for_shortlisted_jobs(
     mock_factory_cls: MagicMock,
     mock_cv_context: AsyncMock,
-    mock_build_graph: MagicMock,
+    mock_get_graph: MagicMock,
     mock_upsert: AsyncMock,
     mock_create_or_update: AsyncMock,
     mock_user: MagicMock,
@@ -98,7 +98,7 @@ async def test_workflow_persists_evaluations_for_shortlisted_jobs(
     mock_cv_context.return_value = "CV context text"
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(return_value=_graph_result(two_shortlisted_jobs))
-    mock_build_graph.return_value = mock_graph
+    mock_get_graph.return_value = mock_graph
 
     request = OrchestrateRequest(criteria="Python engineer remote")
     response = await search_jobs_workflow(
@@ -119,13 +119,13 @@ async def test_workflow_persists_evaluations_for_shortlisted_jobs(
     "src.api.routes.workflows.JobRepository.create_or_update", new_callable=AsyncMock
 )
 @patch("src.api.routes.workflows.EvaluationRepository.upsert", new_callable=AsyncMock)
-@patch("src.api.routes.workflows.build_graph")
+@patch("src.api.routes.workflows.get_graph")
 @patch("src.api.routes.workflows.get_cv_context_async", new_callable=AsyncMock)
 @patch("src.api.routes.workflows.AgentFactory")
 async def test_workflow_returns_response_on_persistence_failure(
     mock_factory_cls: MagicMock,
     mock_cv_context: AsyncMock,
-    mock_build_graph: MagicMock,
+    mock_get_graph: MagicMock,
     mock_upsert: AsyncMock,
     mock_create_or_update: AsyncMock,
     mock_user: MagicMock,
@@ -136,7 +136,7 @@ async def test_workflow_returns_response_on_persistence_failure(
     mock_cv_context.return_value = "CV context text"
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(return_value=_graph_result(two_shortlisted_jobs))
-    mock_build_graph.return_value = mock_graph
+    mock_get_graph.return_value = mock_graph
     mock_session.commit.side_effect = Exception("DB down")
 
     request = OrchestrateRequest(criteria="Python engineer remote")
@@ -156,13 +156,13 @@ async def test_workflow_returns_response_on_persistence_failure(
     "src.api.routes.workflows.JobRepository.create_or_update", new_callable=AsyncMock
 )
 @patch("src.api.routes.workflows.EvaluationRepository.upsert", new_callable=AsyncMock)
-@patch("src.api.routes.workflows.build_graph")
+@patch("src.api.routes.workflows.get_graph")
 @patch("src.api.routes.workflows.get_cv_context_async", new_callable=AsyncMock)
 @patch("src.api.routes.workflows.AgentFactory")
 async def test_stream_endpoint_persists_evaluations_for_shortlisted_jobs(
     mock_factory_cls: MagicMock,
     mock_cv_context: AsyncMock,
-    mock_build_graph: MagicMock,
+    mock_get_graph: MagicMock,
     mock_upsert: AsyncMock,
     mock_create_or_update: AsyncMock,
     mock_user: MagicMock,
@@ -173,7 +173,7 @@ async def test_stream_endpoint_persists_evaluations_for_shortlisted_jobs(
     mock_cv_context.return_value = "CV context text"
 
     applications = {
-        job.id: {"founded_job_offer": f"Summary for {job.id}"}
+        job.id: {"found_job_offer": f"Summary for {job.id}"}
         for job in two_shortlisted_jobs
     }
 
@@ -195,7 +195,7 @@ async def test_stream_endpoint_persists_evaluations_for_shortlisted_jobs(
 
     mock_graph = MagicMock()
     mock_graph.astream = mock_astream
-    mock_build_graph.return_value = mock_graph
+    mock_get_graph.return_value = mock_graph
 
     async def override_get_db():  # type: ignore[return]
         yield mock_session

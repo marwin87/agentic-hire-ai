@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
-from src.schema.state import AgenticHireState
+from src.schema.state import AgenticHireState, JobOffer
 from src.agents.agents import get_agent_factory
 from src.config.settings import config
 from src.utils.progress import emit
@@ -95,25 +95,24 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
         f"[ORCHESTRATOR] Validating {len(found_jobs)} found jobs, targeting {max_offers} max"
     )
 
-    validated_jobs_with_status = []
-    rejected_jobs = []  # New list for invalid jobs
+    validated_jobs_with_status: list[JobOffer] = []
+    rejected_jobs: list[JobOffer] = []
     for job in found_jobs:
+        if len(validated_jobs_with_status) >= max_offers:
+            break  # stop early — no point validating jobs we will discard anyway
         await emit("validate_jobs", f"Checking: {job.title} @ {job.company}")
         is_valid = await factory.job_validator.is_job_valid(job)
         if is_valid:
             validated_jobs_with_status.append(job)
             await emit("validate_jobs", f"  ✓ Active")
         else:
-            rejected_jobs.append(job)  # Track as rejected
+            rejected_jobs.append(job)
             await emit("validate_jobs", f"  ✗ Inactive or expired")
 
-    valid_jobs = validated_jobs_with_status
-
-    # Limit the number of jobs to the configured maximum
-    limited_jobs = valid_jobs[:max_offers]
+    limited_jobs = validated_jobs_with_status
 
     logger.info(
-        f"[ORCHESTRATOR] Validation complete: {len(valid_jobs)} valid, {len(rejected_jobs)} rejected, {len(limited_jobs)} passed after limiting"
+        f"[VALIDATE] Validation complete: {len(limited_jobs)} valid, {len(rejected_jobs)} rejected"
     )
     needs_more = len(limited_jobs) < max_offers
     await emit(
@@ -157,3 +156,14 @@ def build_graph() -> CompiledStateGraph:
     workflow.add_edge(NODE_TAILOR, END)
 
     return workflow.compile()
+
+
+_graph: CompiledStateGraph | None = None
+
+
+def get_graph() -> CompiledStateGraph:
+    """Return the compiled LangGraph workflow, building it once on first call."""
+    global _graph
+    if _graph is None:
+        _graph = build_graph()
+    return _graph

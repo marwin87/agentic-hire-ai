@@ -33,7 +33,7 @@ def _graph_result(job: JobOffer) -> dict:
         "shortlisted_jobs": [job],
         "rejected_jobs": [],
         "valid_jobs": [job],
-        "applications": {job.id: {"founded_job_offer": "Excellent opportunity"}},
+        "applications": {job.id: {"found_job_offer": "Excellent opportunity"}},
     }
 
 
@@ -53,14 +53,14 @@ async def test_sync_workflow_persists_match_score_to_db(
         patch(
             "src.api.routes.workflows.get_cv_context_async", new_callable=AsyncMock
         ) as mock_cv,
-        patch("src.api.routes.workflows.build_graph") as mock_build_graph,
+        patch("src.api.routes.workflows.get_graph") as mock_get_graph,
     ):
         mock_factory_cls.return_value = MagicMock()
         mock_cv.return_value = ""
 
         mock_graph = MagicMock()
         mock_graph.ainvoke = AsyncMock(return_value=_graph_result(job))
-        mock_build_graph.return_value = mock_graph
+        mock_get_graph.return_value = mock_graph
 
         response = await async_client_a.post(
             "/api/workflows/search-jobs",
@@ -106,7 +106,7 @@ async def test_streaming_workflow_persists_match_score_to_db(
         # tailor node populates acc["applications"] for tailor_summary
         yield {
             "tailor": {
-                "applications": {job_id: {"founded_job_offer": "Stream test summary"}}
+                "applications": {job_id: {"found_job_offer": "Stream test summary"}}
             }
         }
 
@@ -115,14 +115,14 @@ async def test_streaming_workflow_persists_match_score_to_db(
         patch(
             "src.api.routes.workflows.get_cv_context_async", new_callable=AsyncMock
         ) as mock_cv,
-        patch("src.api.routes.workflows.build_graph") as mock_build_graph,
+        patch("src.api.routes.workflows.get_graph") as mock_get_graph,
     ):
         mock_factory_cls.return_value = MagicMock()
         mock_cv.return_value = ""
 
         mock_graph = MagicMock()
         mock_graph.astream = fake_astream
-        mock_build_graph.return_value = mock_graph
+        mock_get_graph.return_value = mock_graph
 
         # Consume the full SSE stream until workflow_complete is received.
         # Persistence happens before workflow_complete is enqueued, so by the

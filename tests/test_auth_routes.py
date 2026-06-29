@@ -204,7 +204,7 @@ async def test_refresh_success_returns_new_access_token() -> None:
     )
     request = RefreshRequest(refresh_token=token)
     with patch("src.api.routes.auth.encode_token", return_value="new_access"):
-        result = await refresh(request, db=_mock_db())
+        result = await refresh(request, db=_mock_db(existing_user=MagicMock()))
 
     assert result["access_token"] == "new_access"
     assert result["refresh_token"] == token

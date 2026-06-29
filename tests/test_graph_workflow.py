@@ -313,7 +313,7 @@ async def test_full_workflow_scout_to_applications(
         return_value={
             "applications": {
                 mock_job_offer.id: {
-                    "founded_job_offer": "example.com -> https://example.com/jobs/123\n\nWorth applying.",
+                    "found_job_offer": "example.com -> https://example.com/jobs/123\n\nWorth applying.",
                     "job_title": mock_job_offer.title,
                     "company": mock_job_offer.company,
                 }

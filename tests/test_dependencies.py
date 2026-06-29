@@ -6,34 +6,25 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from src.api.dependencies import get_config, get_current_user, get_db, get_factory
+from src.api.dependencies import get_current_user, get_db
 from src.auth import encode_token
-from src.config.settings import config
 
 # ===== simple deps =====
-
-
-def test_get_config_returns_config_singleton() -> None:
-    result = get_config()
-    assert result is config
-
-
-def test_get_factory_returns_agent_factory() -> None:
-    with patch("src.api.dependencies.get_agent_factory") as mock_factory:
-        mock_factory.return_value = MagicMock()
-        result = get_factory()
-    assert result is mock_factory.return_value
 
 
 @pytest.mark.asyncio
 async def test_get_db_returns_session() -> None:
     mock_session = MagicMock()
-    mock_factory = MagicMock(return_value=mock_session)
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+    mock_factory = MagicMock(return_value=mock_ctx)
 
-    with patch("src.api.dependencies.get_session_factory", return_value=mock_factory):
-        result = await get_db()
+    with patch("src.db.database.get_session_factory", return_value=mock_factory):
+        sessions = [s async for s in get_db()]
 
-    assert result is mock_session
+    assert len(sessions) == 1
+    assert sessions[0] is mock_session
 
 
 # ===== get_current_user =====

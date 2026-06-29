@@ -57,9 +57,7 @@ def test_agent_factory_generates_default_user_id_when_none() -> None:
 
 
 def test_get_agent_factory_returns_cached_instance() -> None:
-    import src.agents.agents as agents_module
-
-    agents_module._factory_cache.clear()
+    get_agent_factory.cache_clear()
     patches = _patch_all()
     [p.start() for p in patches]
     try:
@@ -69,13 +67,11 @@ def test_get_agent_factory_returns_cached_instance() -> None:
     finally:
         for p in patches:
             p.stop()
-        agents_module._factory_cache.clear()
+        get_agent_factory.cache_clear()
 
 
 def test_get_agent_factory_scopes_by_user_id() -> None:
-    import src.agents.agents as agents_module
-
-    agents_module._factory_cache.clear()
+    get_agent_factory.cache_clear()
     uid1, uid2 = uuid4(), uuid4()
     patches = _patch_all()
     [p.start() for p in patches]
@@ -86,4 +82,4 @@ def test_get_agent_factory_scopes_by_user_id() -> None:
     finally:
         for p in patches:
             p.stop()
-        agents_module._factory_cache.clear()
+        get_agent_factory.cache_clear()

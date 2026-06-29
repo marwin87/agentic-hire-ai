@@ -5,7 +5,7 @@ from uuid import UUID
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select, and_, cast, func
+from sqlalchemy import select, and_, cast, func, delete
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,19 +67,6 @@ class CVFileRepository:
         )
         return result.scalar_one_or_none()
 
-    @staticmethod
-    async def update_hash(session: AsyncSession, user_id: UUID, new_hash: str) -> None:
-        """Update the file hash for a user's CV."""
-        result = await session.execute(
-            select(CVFile)
-            .where(CVFile.user_id == user_id)
-            .order_by(CVFile.updated_at.desc())
-            .limit(1)
-        )
-        cv_file = result.scalar_one_or_none()
-        if cv_file:
-            cv_file.file_hash = new_hash  # type: ignore[assignment]
-
 
 class CVEmbeddingRepository:
     """Repository for CV embedding CRUD and vector search operations."""
@@ -114,12 +101,8 @@ class CVEmbeddingRepository:
 
     @staticmethod
     async def delete_by_user(session: AsyncSession, user_id: UUID) -> None:
-        """Delete all embeddings for a user."""
-        stmt = select(CVEmbedding).where(CVEmbedding.user_id == user_id)
-        result = await session.execute(stmt)
-        embeddings = result.scalars().all()
-        for embedding in embeddings:
-            session.delete(embedding)  # type: ignore[unused-coroutine]
+        """Delete all embeddings for a user in a single statement."""
+        await session.execute(delete(CVEmbedding).where(CVEmbedding.user_id == user_id))
         await session.flush()
 
 

@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from src.agents.scout import ScoutAgent
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.tailor import TailorAgent
@@ -89,12 +91,11 @@ class AgentFactory:
         self.job_validator = JobValidator(llm=validator_llm)
 
 
-_factory_cache: dict[str, AgentFactory] = {}
-
-
+@lru_cache(maxsize=256)
 def get_agent_factory(user_id: UUID | None = None) -> AgentFactory:
-    """Returns a cached AgentFactory instance scoped to the given user_id."""
-    cache_key = str(user_id) if user_id else "_default"
-    if cache_key not in _factory_cache:
-        _factory_cache[cache_key] = AgentFactory(user_id=user_id)
-    return _factory_cache[cache_key]
+    """Returns a cached AgentFactory instance scoped to the given user_id.
+
+    lru_cache caps memory use at 256 entries (LRU eviction); the old unbounded
+    dict grew forever — one entry per unique user_id, never freed.
+    """
+    return AgentFactory(user_id=user_id)

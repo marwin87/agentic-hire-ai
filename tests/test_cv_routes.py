@@ -209,7 +209,7 @@ async def test_upload_cv_empty_file_raises_400() -> None:
 
 @pytest.mark.asyncio
 async def test_upload_cv_oversized_file_raises_400() -> None:
-    big_content = b"X" * (10 * 1024 * 1024 + 1)
+    big_content = b"%PDF" + b"X" * (10 * 1024 * 1024 + 1)
     with pytest.raises(HTTPException) as exc:
         await upload_cv(
             background_tasks=MagicMock(),

@@ -194,6 +194,20 @@ async def refresh(
         logger.warning("Refresh token missing required claims")
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
+    # Verify user still exists in the database — tokens outlive account deletion otherwise
+    try:
+        result = await db.execute(select(User).where(User.id == user_id))
+        if result.scalar_one_or_none() is None:
+            logger.warning(f"Refresh attempt for deleted user: {user_id}")
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired refresh token"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Database error during token refresh: {e}", exc_info=e)
+        raise HTTPException(status_code=500, detail="Database error")
+
     logger.info(f"Token refreshed for user: {email}")
 
     # Generate new access token

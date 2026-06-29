@@ -119,13 +119,13 @@ async def test_tailor_formats_output(
     result = await tailor(sample_state)
 
     app_data = result["applications"]["job-001"]
-    assert "founded_job_offer" in app_data
+    assert "found_job_offer" in app_data
     assert "job_title" in app_data
     assert "company" in app_data
     assert app_data["job_title"] == sample_job.title
     assert app_data["company"] == sample_job.company
     # Portal should be extracted from URL
-    assert "example.com" in app_data["founded_job_offer"]
+    assert "example.com" in app_data["found_job_offer"]
 
 
 @pytest.mark.asyncio

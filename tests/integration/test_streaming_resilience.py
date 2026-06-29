@@ -76,9 +76,7 @@ async def test_sse_disconnect_leaves_no_orphan_evaluation(
         yield {"orchestrator": {"shortlisted_jobs": [job], "rejected_jobs": []}}
         yield {
             "tailor": {
-                "applications": {
-                    job_id: {"founded_job_offer": "Resilience test summary"}
-                }
+                "applications": {job_id: {"found_job_offer": "Resilience test summary"}}
             }
         }
         # Block here — run_graph() is suspended at the next anext() call inside
@@ -94,14 +92,14 @@ async def test_sse_disconnect_leaves_no_orphan_evaluation(
             patch(
                 "src.api.routes.workflows.get_cv_context_async", new_callable=AsyncMock
             ) as mock_cv,
-            patch("src.api.routes.workflows.build_graph") as mock_build_graph,
+            patch("src.api.routes.workflows.get_graph") as mock_get_graph,
         ):
             mock_factory_cls.return_value = MagicMock()
             mock_cv.return_value = ""
 
             mock_graph = MagicMock()
             mock_graph.astream = fake_astream_stalling
-            mock_build_graph.return_value = mock_graph
+            mock_get_graph.return_value = mock_graph
 
             # Call the route handler directly — bypasses httpx/ASGITransport so
             # we can aclose() the body_iterator without the transport draining the body.

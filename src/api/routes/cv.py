@@ -128,6 +128,11 @@ async def upload_cv(
     content = await file.read()
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="File is empty")
+    # Validate magic bytes — content_type is client-supplied and trivially spoofed
+    if not content.startswith(b"%PDF"):
+        raise HTTPException(
+            status_code=400, detail="Invalid file. Only PDF files are allowed."
+        )
     if len(content) > MAX_FILE_SIZE:
         user_id_val = cast(UUID, user.id)
         logger.warning(

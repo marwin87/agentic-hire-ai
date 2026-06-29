@@ -51,11 +51,11 @@ async def test_workflow_error_does_not_leak_exception_in_response() -> None:
                 new_callable=AsyncMock,
                 return_value="",
             ),
-            patch("src.api.routes.workflows.build_graph") as mock_build_graph,
+            patch("src.api.routes.workflows.get_graph") as mock_get_graph,
         ):
             mock_graph = AsyncMock()
             mock_graph.ainvoke.side_effect = Exception(FAKE_SECRET)
-            mock_build_graph.return_value = mock_graph
+            mock_get_graph.return_value = mock_graph
 
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
@@ -85,11 +85,11 @@ async def test_streaming_error_does_not_leak_exception_in_sse() -> None:
             new_callable=AsyncMock,
             return_value="",
         ),
-        patch("src.api.routes.workflows.build_graph") as mock_build_graph,
+        patch("src.api.routes.workflows.get_graph") as mock_get_graph,
     ):
         mock_graph = MagicMock()
         mock_graph.astream = fake_astream_raises
-        mock_build_graph.return_value = mock_graph
+        mock_get_graph.return_value = mock_graph
 
         streaming_response = await search_jobs_stream(
             OrchestrateRequest(criteria="Python developer"),

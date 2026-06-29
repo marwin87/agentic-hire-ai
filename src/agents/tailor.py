@@ -91,14 +91,14 @@ class TailorAgent:
                 except Exception as e:
                     logger.debug(f"Failed to parse URL {job.url}: {e}")
 
-            founded_job_offer = f"{portal} -> {job.url}\n\n{response.content}"
+            found_job_offer = f"{portal} -> {job.url}\n\n{response.content}"
 
             applications[job.id] = {
-                "founded_job_offer": founded_job_offer,
+                "found_job_offer": found_job_offer,
                 "job_title": job.title,
                 "company": job.company,
             }
-            logger.info(f"[TAILOR] {founded_job_offer}")
+            logger.info(f"[TAILOR] {found_job_offer}")
             logger.debug(f"Tailored application generated for {job.id}")
 
         logger.info(

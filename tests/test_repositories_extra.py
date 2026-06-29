@@ -65,20 +65,6 @@ async def test_cv_file_repository_get_latest_by_user_none() -> None:
     assert result is None
 
 
-@pytest.mark.asyncio
-async def test_cv_file_repository_update_hash_when_found() -> None:
-    cv = CVFile(user_id=uuid4(), file_path="/cv.pdf", file_hash="old")
-    session = _session(scalar_result=cv)
-    await CVFileRepository.update_hash(session, cv.user_id, "new_hash")  # type: ignore[arg-type]
-    assert cv.file_hash == "new_hash"
-
-
-@pytest.mark.asyncio
-async def test_cv_file_repository_update_hash_when_not_found() -> None:
-    session = _session(scalar_result=None)
-    await CVFileRepository.update_hash(session, uuid4(), "new_hash")  # no-op, no raise
-
-
 # ===== CVEmbeddingRepository =====
 
 
@@ -96,11 +82,9 @@ async def test_cv_embedding_search_returns_empty_when_vector_is_none() -> None:
 @pytest.mark.asyncio
 async def test_cv_embedding_delete_by_user_removes_all() -> None:
     uid = uuid4()
-    emb1 = CVEmbedding(id=uuid4(), user_id=uid, chunk_text="a", embedding=[0.1])
-    emb2 = CVEmbedding(id=uuid4(), user_id=uid, chunk_text="b", embedding=[0.2])
-    session = _session(scalars_list=[emb1, emb2])
+    session = AsyncMock()
     await CVEmbeddingRepository.delete_by_user(session, uid)
-    assert session.delete.call_count == 2
+    session.execute.assert_called_once()
     session.flush.assert_called_once()
 
 

@@ -10,39 +10,8 @@ import jwt as pyjwt
 
 from src.agents.agents import get_agent_factory
 from src.config.settings import config
-from src.db import get_session_factory, User
+from src.db import get_session_factory, get_db, User
 from src.auth import decode_token
-
-
-def get_factory() -> Any:
-    """Get the AgentFactory singleton instance.
-
-    This is a FastAPI dependency that can be injected into route handlers.
-    """
-    return get_agent_factory()
-
-
-def get_config() -> Any:
-    """Get the AppConfig singleton instance.
-
-    This is a FastAPI dependency that can be injected into route handlers.
-    """
-    return config
-
-
-async def get_db() -> AsyncSession:
-    """Get a database session for use in route handlers.
-
-    Returns:
-        AsyncSession connected to the database
-
-    Yields:
-        Database session
-    """
-    factory = get_session_factory()
-    session = factory()
-    return session  # type: ignore[no-any-return]
-
 
 security = HTTPBearer()
 
