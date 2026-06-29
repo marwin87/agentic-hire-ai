@@ -110,7 +110,7 @@ orchestrator updates Status as artifacts appear on disk.
 | rescout + validator unit tests | local | required after §3 Phase 2 lands | conditional edge regressions |
 | streaming disconnect test | local | required after §3 Phase 3 lands | orphan-task and competing-write regressions |
 | secret-leak response inspection | local | required after §3 Phase 4 lands | credential exposure in error paths |
-| CI (GitHub Actions or equivalent) | CI on PR | planned — no phase assigned yet; required before any cloud deployment | all of the above, automatically |
+| CI (GitHub Actions or equivalent) | CI on PR | configured — `.github/workflows/ci.yml`; runs lint, typecheck, unit tests, docker build, Playwright E2E, and integration smoke on push/PR to main/master/develop | all of the above, automatically |
 
 ---
 
@@ -192,7 +192,7 @@ contributors should respect these unless the underlying assumption changes.
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-06-01
+- Strategy (§1–§5) last reviewed: 2026-06-29 (CI gate updated)
 - Stack versions last verified: 2026-06-01
 - AI-native tool references last verified: 2026-06-01 (none in use)
 
