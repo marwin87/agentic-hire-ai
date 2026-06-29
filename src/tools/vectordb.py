@@ -5,10 +5,8 @@ import re
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from typing import List, Dict, Any, Optional, cast, TypeVar, overload
+from typing import Any
 from uuid import UUID
-
-T = TypeVar("T")
 
 # OS Dependencies Check
 try:
@@ -66,8 +64,20 @@ class CVVectorManager:
         )
 
     def _run_async(self, coro: Any) -> Any:
-        """Run an async coroutine from sync context."""
-        return asyncio.run(coro)  # type: ignore[return-value]
+        """Run an async coroutine from a synchronous context.
+
+        Safe whether called directly or from a thread (via asyncio.to_thread).
+        When an event loop is already running (e.g. FastAPI/Uvicorn), delegates
+        to a worker thread so asyncio.run() gets a clean loop.
+        """
+        try:
+            asyncio.get_running_loop()
+            # Already inside a running loop — delegate to a fresh thread.
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, coro).result()
+        except RuntimeError:
+            # No running loop — safe to run directly.
+            return asyncio.run(coro)
 
     @staticmethod
     def _calculate_file_hash(file_path: str) -> str:
@@ -78,7 +88,7 @@ class CVVectorManager:
         return sha256_hash.hexdigest()
 
     @staticmethod
-    def _pdf_to_base64_images(file_path: str) -> List[str]:
+    def _pdf_to_base64_images(file_path: str) -> list[str]:
         images = convert_from_path(file_path, dpi=150)
         base64_images = []
 
@@ -150,14 +160,14 @@ class CVVectorManager:
         return str(content)
 
     @staticmethod
-    def _split_experience_block(text: str) -> List[str]:
+    def _split_experience_block(text: str) -> list[str]:
         """
         Splits experience section into job-level chunks using ### headers.
         """
         jobs = re.split(r"\n(?=### )", text)
         return [job.strip() for job in jobs if job.strip()]
 
-    async def ingest_cv_async(self, file_path: str) -> Dict[str, Any]:
+    async def ingest_cv_async(self, file_path: str) -> dict[str, Any]:
         """Async version of CV ingestion that stores to pgvector."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Resume not found at: {file_path}")
@@ -217,7 +227,7 @@ class CVVectorManager:
             separators=["\n\n", "\n", "•", ". "],
         )
 
-        final_chunks: List[Document] = []
+        final_chunks: list[Document] = []
 
         for doc in md_docs:
             section = (doc.metadata.get("Header 2") or "").lower()
@@ -269,15 +279,12 @@ class CVVectorManager:
             await CVEmbeddingRepository.delete_by_user(session, self.user_id)
 
             # Create CVEmbedding objects with embeddings
-            embeddings_list: List[CVEmbedding] = []
-            for chunk in final_chunks:  # type: ignore[assignment]
-                assert isinstance(
-                    chunk, Document
-                ), f"Expected Document, got {type(chunk)}"
-                embedding_vector = self.embeddings.embed_query(chunk.page_content)
+            embeddings_list: list[CVEmbedding] = []
+            for doc_chunk in final_chunks:
+                embedding_vector = self.embeddings.embed_query(doc_chunk.page_content)
                 cv_embedding = CVEmbedding(
                     user_id=self.user_id,
-                    chunk_text=chunk.page_content,
+                    chunk_text=doc_chunk.page_content,
                     embedding=embedding_vector,
                 )
                 embeddings_list.append(cv_embedding)
@@ -295,9 +302,10 @@ class CVVectorManager:
             "hash": new_hash,
         }
 
-    def ingest_cv(self, file_path: str) -> Dict[str, Any]:
+    def ingest_cv(self, file_path: str) -> dict[str, Any]:
         """Synchronous wrapper for CV ingestion (called via asyncio.to_thread)."""
-        return cast(Dict[str, Any], self._run_async(self.ingest_cv_async(file_path)))
+        result: dict[str, Any] = self._run_async(self.ingest_cv_async(file_path))
+        return result
 
     async def get_context_async(self, query: str, limit: int = 5) -> str:
         """Retrieve relevant CV chunks from pgvector using semantic search."""
@@ -314,7 +322,7 @@ class CVVectorManager:
             if not results:
                 return ""
 
-            context_parts: List[str] = []
+            context_parts: list[str] = []
             for embedding in results:
                 context_parts.append(str(embedding.chunk_text))
 
@@ -322,7 +330,8 @@ class CVVectorManager:
 
     def get_context(self, query: str, limit: int = 5) -> str:
         """Synchronous wrapper for context retrieval (called via asyncio.to_thread)."""
-        return cast(str, self._run_async(self.get_context_async(query, limit)))
+        result: str = self._run_async(self.get_context_async(query, limit))
+        return result
 
     async def get_full_resume_text_async(self) -> str:
         """Retrieve all CV chunks for this user from pgvector."""
@@ -345,4 +354,5 @@ class CVVectorManager:
 
     def get_full_resume_text(self) -> str:
         """Synchronous wrapper to get full resume (called via asyncio.to_thread)."""
-        return cast(str, self._run_async(self.get_full_resume_text_async()))
+        result: str = self._run_async(self.get_full_resume_text_async())
+        return result

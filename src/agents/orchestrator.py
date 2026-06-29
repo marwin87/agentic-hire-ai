@@ -79,17 +79,21 @@ class OrchestratorAgent:
             )
 
             # 1. RAG Step: Get specific context from CV for THIS job
-            # We search for the job title and description in our vectors
             description_snippet = (
                 job.description[: config.orchestrator_description_snippet_chars]
                 if job.description
                 else ""
             )
             search_query = f"{job.title} {description_snippet}"
-            # Use async method directly (pgvector queries are async-native)
-            relevant_cv_parts = await self.vector_manager.get_context_async(
-                search_query, config.orchestrator_rag_context_chunks
-            )
+            try:
+                relevant_cv_parts = await self.vector_manager.get_context_async(
+                    search_query, config.orchestrator_rag_context_chunks
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"[ORCHESTRATOR] RAG retrieval failed for '{job.title}': {exc}. Scoring without CV context."
+                )
+                relevant_cv_parts = ""
 
             logger.debug(f"RAG retrieved context length: {len(relevant_cv_parts)}")
 

@@ -1,4 +1,4 @@
-from typing import Annotated, List, TypedDict, Optional
+from typing import Annotated, TypedDict, Optional
 import operator
 from uuid import UUID
 from pydantic import BaseModel, Field
@@ -28,9 +28,9 @@ class JobOffer(BaseModel):
     )
 
 
-def deduplicate_seen_jobs(existing: List[str], new: List[str]) -> List[str]:
-    """Reducer function to maintain a unique list of seen job URLs in the state."""
-    return list(set((existing or []) + (new or [])))
+def deduplicate_seen_jobs(existing: list[str], new: list[str]) -> list[str]:
+    """Reducer function to maintain a unique, insertion-ordered list of seen job URLs."""
+    return list(dict.fromkeys((existing or []) + (new or [])))
 
 
 class _AgenticHireStateRequired(TypedDict):
@@ -38,15 +38,15 @@ class _AgenticHireStateRequired(TypedDict):
 
     target_criteria: str
     resume_context: str
-    found_jobs: Annotated[List[JobOffer], operator.add]
-    valid_jobs: List[JobOffer]
-    shortlisted_jobs: List[JobOffer]
+    found_jobs: Annotated[list[JobOffer], operator.add]
+    valid_jobs: list[JobOffer]
+    shortlisted_jobs: list[JobOffer]
     applications: dict[str, dict[str, str]]
     status: str
     max_offers: int
     scout_runs: int
-    rejected_jobs: Annotated[List[JobOffer], operator.add]
-    seen_jobs: Annotated[List[str], deduplicate_seen_jobs]
+    rejected_jobs: Annotated[list[JobOffer], operator.add]
+    seen_jobs: Annotated[list[str], deduplicate_seen_jobs]
 
 
 class AgenticHireState(_AgenticHireStateRequired, total=False):

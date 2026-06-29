@@ -6,7 +6,7 @@ from src.tools.job_validator import JobValidator
 from src.config.settings import config
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import SecretStr
-from typing import Any, Awaitable, Callable
+from typing import Any
 from uuid import UUID, uuid4
 
 

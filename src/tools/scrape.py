@@ -31,11 +31,8 @@ _JS_RENDER_WAIT_MS = config.scraper_js_render_wait_ms
 # Protocol constants shared with scout.py — single source of truth for output prefixes.
 JOB_LINKS_PREFIX = "JOB_LINKS:"
 JOB_POSTING_PREFIX = "Title:"
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
-)
+# User-Agent sourced from config — shared with job_validator to avoid version drift.
+_USER_AGENT = config.scraper_user_agent
 
 _JSON_LD_JS = """() => {
     const scripts = document.querySelectorAll('script[type="application/ld+json"]');

@@ -1,10 +1,20 @@
 from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 from src.schema.state import AgenticHireState
-from src.agents.agents import get_agent_factory  # Import the getter function
+from src.agents.agents import get_agent_factory
 from src.config.settings import config
 from src.utils.progress import emit
 from loguru import logger
 from typing import Any
+
+# Node and edge name constants — single source of truth to prevent typo-silent failures.
+NODE_SCOUT = "scout"
+NODE_VALIDATE = "validate_jobs"
+NODE_ORCHESTRATOR = "orchestrator"
+NODE_TAILOR = "tailor"
+EDGE_RESCOUT = "rescout"
+EDGE_PROCEED = "proceed"
+EDGE_END = "end"
 
 
 def should_rescout(state: AgenticHireState) -> str:
@@ -25,25 +35,24 @@ def should_rescout(state: AgenticHireState) -> str:
         logger.warning(
             f"[ORCHESTRATOR] Max scout runs reached ({scout_runs}/{config.max_scout_runs}). Proceeding to orchestrator."
         )
-        return "proceed"
+        return EDGE_PROCEED
 
     if len(valid_jobs) >= max_offers:
         logger.info(
             f"[ORCHESTRATOR] Target of {max_offers} valid jobs reached ({len(valid_jobs)} current). Proceeding to orchestrator."
         )
-        return "proceed"
+        return EDGE_PROCEED
 
     if not found_jobs and scout_runs > 0:
-        # If we've already tried and still have nothing, stop.
         logger.warning(
             "[ORCHESTRATOR] No jobs found in scout attempt. Stopping to prevent infinite loop."
         )
-        return "end"
+        return EDGE_END
 
     logger.info(
         f"[ORCHESTRATOR] Proceeding to rescout. Need {max_offers - len(valid_jobs)} more jobs."
     )
-    return "rescout"
+    return EDGE_RESCOUT
 
 
 async def orchestrator_node(state: AgenticHireState) -> dict[str, Any]:
@@ -78,7 +87,7 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
     """
     Node to filter out invalid or expired job offers and limit the number.
     """
-    factory = get_agent_factory()
+    factory = get_agent_factory(user_id=state.get("user_id"))
     found_jobs = state.get("found_jobs", [])
     max_offers = state.get("max_offers", 5)
 
@@ -124,36 +133,27 @@ async def validate_and_limit_jobs_node(state: AgenticHireState) -> dict[str, Any
     }
 
 
-def build_graph() -> Any:
+def build_graph() -> CompiledStateGraph:
     factory = get_agent_factory()
-    # 2. Initialize the Graph with our State schema
     logger.info("[ORCHESTRATOR] Building LangGraph workflow")
     workflow = StateGraph(AgenticHireState)
 
-    # 3. Add Nodes (The Workers)
-    workflow.add_node("scout", factory.scout)
-    workflow.add_node("validate_jobs", validate_and_limit_jobs_node)
-    workflow.add_node("orchestrator", orchestrator_node)
-    workflow.add_node("tailor", tailor_node)
+    workflow.add_node(NODE_SCOUT, factory.scout)
+    workflow.add_node(NODE_VALIDATE, validate_and_limit_jobs_node)
+    workflow.add_node(NODE_ORCHESTRATOR, orchestrator_node)
+    workflow.add_node(NODE_TAILOR, tailor_node)
 
-    # 4. Set the Entry Point
-    workflow.set_entry_point("scout")
+    workflow.set_entry_point(NODE_SCOUT)
 
-    # 5. Define the Flow (Edges)
-    workflow.add_edge("scout", "validate_jobs")
+    workflow.add_edge(NODE_SCOUT, NODE_VALIDATE)
 
-    # After validation, check if we need to scout again
     workflow.add_conditional_edges(
-        "validate_jobs",
+        NODE_VALIDATE,
         should_rescout,
-        {"rescout": "scout", "proceed": "orchestrator", "end": END},
+        {EDGE_RESCOUT: NODE_SCOUT, EDGE_PROCEED: NODE_ORCHESTRATOR, EDGE_END: END},
     )
 
-    # If we have jobs, they go from Matchmaker to Tailor
-    workflow.add_edge("orchestrator", "tailor")
+    workflow.add_edge(NODE_ORCHESTRATOR, NODE_TAILOR)
+    workflow.add_edge(NODE_TAILOR, END)
 
-    # After tailoring, we are done
-    workflow.add_edge("tailor", END)
-
-    # 6. Compile the graph
     return workflow.compile()

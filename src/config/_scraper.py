@@ -22,6 +22,14 @@ class ScraperMixin(BaseModel):
         10.0, description="HTTP timeout in seconds for OrioSearch requests."
     )
 
+    # Shared User-Agent for all outbound HTTP requests (scraper + validator).
+    scraper_user_agent: str = Field(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36",
+        description="User-Agent header sent by the scraper and job validator.",
+    )
+
     # Web scraper (Playwright-based)
     scraper_browser_concurrency: int = Field(
         3, description="Max concurrent Playwright browser instances."

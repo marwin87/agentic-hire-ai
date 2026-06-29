@@ -77,7 +77,6 @@ jobs:
           AGENTIC_HIRE_ORIOSEARCH_BASE_URL: http://localhost:8000
         run: |
           uv run pytest tests/ -v --tb=short \
-            --ignore=tests/integration \
             --cov=src --cov-report=term-missing --cov-fail-under=80
 
   docker-build:

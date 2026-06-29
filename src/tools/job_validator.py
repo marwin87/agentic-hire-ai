@@ -7,7 +7,16 @@ from src.schema.validation import JobValidationResult, ValidationFailureReason
 from src.config.settings import config
 from pydantic import BaseModel, Field
 from loguru import logger
-from typing import Any, Dict, Optional
+from typing import Any
+
+_EXPIRATION_CHECK_PROMPT = """\
+Analyze the following text extracted from a job posting webpage.
+Determine if the job posting is still active or if it has expired, closed, or the position has been filled.
+Pay attention to phrases indicating the job is no longer available in ANY language.
+
+Webpage Text:
+{text}
+"""
 
 
 class ExpirationCheck(BaseModel):
@@ -28,7 +37,7 @@ class JobValidator:
     def __init__(self, llm: Any) -> None:
         self.checker = llm.with_structured_output(ExpirationCheck)
         # (result, monotonic_timestamp) — evicted on read when older than validator_cache_ttl_s
-        self._cache: Dict[str, tuple[bool, float]] = {}
+        self._cache: dict[str, tuple[bool, float]] = {}
 
     def _cache_get(self, url: str) -> bool | None:
         """Returns cached result or None if absent or expired."""
@@ -83,9 +92,7 @@ class JobValidator:
             logger.info(
                 f"[JOB_VALIDATOR] Validating job '{job.title}' at URL: {job.url}"
             )
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            }
+            headers = {"User-Agent": config.scraper_user_agent}
 
             async with httpx.AsyncClient(timeout=config.validator_timeout) as client:
                 response = await client.get(job.url, headers=headers)
@@ -170,16 +177,9 @@ class JobValidator:
 
     async def _invoke_llm_with_retry(
         self, job_title: str, text_to_analyze: str
-    ) -> Optional[ExpirationCheck]:
+    ) -> ExpirationCheck | None:
         """Invoke LLM with exponential backoff retry logic."""
-        prompt = f"""
-            Analyze the following text extracted from a job posting webpage.
-            Determine if the job posting is still active or if it has expired, closed, or the position has been filled.
-            Pay attention to phrases indicating the job is no longer available in ANY language.
-
-            Webpage Text:
-            {text_to_analyze}
-            """
+        prompt = _EXPIRATION_CHECK_PROMPT.format(text=text_to_analyze)
 
         for attempt in range(config.validator_max_retries):
             try:

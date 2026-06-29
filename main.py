@@ -1,28 +1,30 @@
 import asyncio
 from src.graph import build_graph
-from src.agents.agents import get_agent_factory
+from src.agents.agents import AgentFactory, get_agent_factory
 from src.config.logging import setup_logging
 from src.config.settings import config
+from src.tools.vectordb import CVVectorManager
 from src.db.database import init_db, close_db
 from loguru import logger
 from typing import Any, cast
 
 
 def _configure_application() -> None:
-    """Configures logging for the application."""
     setup_logging(debug=config.debug_mode, log_level=config.log_level)
 
 
-def _prepare_cv_data(cv_file_path: str, factory_instance: Any) -> Any:
-    """Initializes the Vector Manager and ingests the CV."""
+async def _prepare_cv_data(
+    cv_file_path: str, factory_instance: AgentFactory
+) -> CVVectorManager:
+    """Ingest CV using the async pipeline — no sync wrapper, no asyncio.run() trap."""
     logger.info("Initializing Vector Manager and ingesting CV...")
     cv_manager = factory_instance.vector_manager
     try:
-        cv_manager.ingest_cv(cv_file_path)
+        await cv_manager.ingest_cv_async(cv_file_path)
         logger.info(f"CV from '{cv_file_path}' ingested successfully.")
     except FileNotFoundError:
         logger.error(
-            f"CV file not found at '{cv_file_path}'. Please check the path in config.py."
+            f"CV file not found at '{cv_file_path}'. Please check the path in config."
         )
         raise
     except Exception as e:
@@ -31,22 +33,26 @@ def _prepare_cv_data(cv_file_path: str, factory_instance: Any) -> Any:
     return cv_manager
 
 
-def _initialize_state(
-    cv_manager: Any, app_config: Any, user_prompt: str = config.initial_prompt
+async def _initialize_state(
+    cv_manager: CVVectorManager,
+    app_config: Any,
+    user_prompt: str = config.initial_prompt,
 ) -> dict[str, Any]:
-    """Sets up the initial state for the LangGraph application."""
+    """Build the initial LangGraph state using async resume retrieval."""
     logger.info("Fetching full resume text for initial context...")
-    initial_context = cv_manager.get_full_resume_text()
+    initial_context = await cv_manager.get_full_resume_text_async()
 
-    initial_state = {
+    initial_state: dict[str, Any] = {
         "resume_context": initial_context,
         "target_criteria": user_prompt,
         "found_jobs": [],
+        "valid_jobs": [],
         "shortlisted_jobs": [],
+        "rejected_jobs": [],
+        "seen_jobs": [],
         "applications": {},
         "status": "Starting AgenticHire AI...",
         "max_offers": app_config.max_valid_offers,
-        "max_scout_runs": app_config.max_scout_runs,
         "scout_runs": 0,
     }
 
@@ -93,8 +99,8 @@ async def _run_workflow() -> None:
     try:
         factory_instance = get_agent_factory()
         app_instance = build_graph()
-        cv_manager = _prepare_cv_data(config.cv_file_path, factory_instance)
-        initial_state = _initialize_state(cv_manager, config)
+        cv_manager = await _prepare_cv_data(config.cv_file_path, factory_instance)
+        initial_state = await _initialize_state(cv_manager, config)
         final_state = _run_graph(initial_state, app_instance)
         _display_results(final_state)
     finally:
