@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, cast
+from src.config.settings import config
 from playwright.async_api import (
     async_playwright,
     TimeoutError as PlaywrightTimeoutError,
@@ -11,7 +12,7 @@ from loguru import logger
 # Cap concurrent Chromium instances — each launch costs ~150MB RAM and 1-2s startup.
 # Scout calls scrape sequentially today, but this guard protects against future
 # parallelisation or concurrent users exhausting system resources.
-_BROWSER_SEM = asyncio.Semaphore(3)
+_BROWSER_SEM = asyncio.Semaphore(config.scraper_browser_concurrency)
 
 _JOB_PATH_SIGNALS: list[str] = [
     "job",
@@ -23,9 +24,9 @@ _JOB_PATH_SIGNALS: list[str] = [
     "praca",
     "ogloszenie",
 ]
-_MIN_JOB_LINKS = 3
-_PAGE_TIMEOUT_MS = 15000
-_JS_RENDER_WAIT_MS = 2000
+_MIN_JOB_LINKS = config.scraper_min_job_links
+_PAGE_TIMEOUT_MS = config.scraper_page_timeout_ms
+_JS_RENDER_WAIT_MS = config.scraper_js_render_wait_ms
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -79,7 +80,9 @@ def _format_job_posting(data: dict[str, Any], url: str) -> str:
     org = data.get("hiringOrganization", {})
     if isinstance(org, dict):
         company = str(org.get("name", ""))
-    description = str(data.get("description", ""))[:5000]
+    description = str(data.get("description", ""))[
+        : config.scraper_description_max_chars
+    ]
     date_posted = str(data.get("datePosted", ""))
     valid_through = str(data.get("validThrough", ""))
     location = ""
@@ -157,7 +160,7 @@ async def scrape_webpage_tool(url: str) -> str:
                 # 3. Text fallback
                 logger.debug(f"[SCRAPE] Text fallback for {url}")
                 text = await page.inner_text("body")
-                return text[:10000]
+                return text[: config.scraper_text_max_chars]
 
             finally:
                 await browser.close()

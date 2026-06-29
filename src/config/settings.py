@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from typing import Optional
 import secrets
 
@@ -20,7 +20,7 @@ class AppConfig(BaseSettings):
 
     # General settings
     debug_mode: bool = Field(
-        True, description="Enable debug mode for more verbose logging and features."
+        False, description="Enable debug mode for more verbose logging and features."
     )
     log_level: str = Field(
         "DEBUG", description="Log level: DEBUG, INFO, WARNING, ERROR"
@@ -100,6 +100,63 @@ class AppConfig(BaseSettings):
         True, description="Cache job validation results."
     )
 
+    # OrioSearch settings
+    oriosearch_num_results: int = Field(
+        10, description="Number of results per OrioSearch query."
+    )
+    oriosearch_search_depth: str = Field(
+        "advanced", description="OrioSearch search depth mode."
+    )
+    oriosearch_max_retries: int = Field(
+        3, description="Max retry attempts for OrioSearch requests."
+    )
+    oriosearch_retry_delay_s: float = Field(
+        1.0, description="Initial retry delay in seconds (doubles each attempt)."
+    )
+    oriosearch_timeout: float = Field(
+        10.0, description="HTTP timeout in seconds for OrioSearch requests."
+    )
+
+    # Scraper settings
+    scraper_browser_concurrency: int = Field(
+        3, description="Max concurrent Playwright browser instances."
+    )
+    scraper_page_timeout_ms: int = Field(
+        15000, description="Playwright page load timeout in milliseconds."
+    )
+    scraper_js_render_wait_ms: int = Field(
+        2000, description="Wait time in milliseconds for JavaScript rendering."
+    )
+    scraper_min_job_links: int = Field(
+        3, description="Minimum job links on a page to classify it as a listing page."
+    )
+    scraper_description_max_chars: int = Field(
+        5000, description="Max characters extracted from JSON-LD job description."
+    )
+    scraper_text_max_chars: int = Field(
+        10000, description="Max characters returned from plain-text page fallback."
+    )
+
+    # Orchestrator / RAG settings
+    orchestrator_description_snippet_chars: int = Field(
+        200, description="Characters of job description used as RAG search query."
+    )
+    orchestrator_rag_context_chunks: int = Field(
+        3, description="Number of CV chunks to retrieve from pgvector per job."
+    )
+
+    # RAG / chunking settings
+    rag_chunk_size: int = Field(
+        700, description="Target character size for CV text chunks."
+    )
+    rag_chunk_overlap: int = Field(
+        50, description="Overlap in characters between adjacent CV chunks."
+    )
+    rag_experience_chunk_threshold: int = Field(
+        900,
+        description="Experience entries longer than this are sub-split into smaller chunks.",
+    )
+
     # LLM settings
     orchestrator_model_name: str = Field("openai/gpt-4o-mini")
     scout_model_name: str = Field("google/gemini-3-flash-preview")
@@ -107,6 +164,9 @@ class AppConfig(BaseSettings):
     vision_model_name: str = Field("openai/gpt-4o")
     validator_model_name: str = Field("openai/gpt-4o")
     embedded_model_name: str = Field("text-embedding-3-small")
+    parser_model_name: str = Field(
+        "openai/gpt-4o-mini", description="LLM model used by JobParser."
+    )
 
     # JWT settings
     jwt_secret_key: SecretStr = Field(
@@ -127,6 +187,17 @@ class AppConfig(BaseSettings):
     password_require_uppercase: bool = Field(
         True, description="Require at least one uppercase letter"
     )
+
+    @model_validator(mode="after")
+    def reject_dev_credentials_in_production(self) -> "AppConfig":
+        if self.environment == "production":
+            url_val = self.database_url.get_secret_value()
+            if "dev_password" in url_val:
+                raise ValueError(
+                    "AGENTIC_HIRE_DATABASE_URL must be set explicitly in production. "
+                    "The default dev_password credential is not permitted outside development."
+                )
+        return self
 
 
 config = AppConfig()  # type: ignore[call-arg]

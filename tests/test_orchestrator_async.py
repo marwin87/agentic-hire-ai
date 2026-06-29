@@ -60,7 +60,6 @@ def sample_state(sample_job: JobOffer) -> AgenticHireState:
             "max_offers": 1,
             "scout_runs": 0,
             "status": "Starting",
-            "search_queries": [],
             "applications": {},
             "found_jobs": [],
             "resume_context": "",

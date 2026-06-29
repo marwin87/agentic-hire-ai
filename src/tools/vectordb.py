@@ -30,6 +30,7 @@ from loguru import logger
 from src.db.repositories import CVEmbeddingRepository, CVFileRepository
 from src.db.models import CVEmbedding
 from src.db.database import get_session_factory
+from src.config.settings import config
 
 
 class CVVectorManager:
@@ -211,8 +212,8 @@ class CVVectorManager:
 
         # --- Improved Recursive Splitter ---
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=700,
-            chunk_overlap=50,
+            chunk_size=config.rag_chunk_size,
+            chunk_overlap=config.rag_chunk_overlap,
             separators=["\n\n", "\n", "•", ". "],
         )
 
@@ -226,7 +227,7 @@ class CVVectorManager:
                 jobs = self._split_experience_block(doc.page_content)
 
                 for job in jobs:
-                    if len(job) > 900:
+                    if len(job) > config.rag_experience_chunk_threshold:
                         sub_chunks = text_splitter.split_text(job)
                         for chunk in sub_chunks:
                             final_chunks.append(

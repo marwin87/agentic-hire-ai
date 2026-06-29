@@ -78,7 +78,6 @@ class TailorAgent:
                     portal = urlparse(job.url).netloc.replace("www.", "")
                 except Exception as e:
                     logger.debug(f"Failed to parse URL {job.url}: {e}")
-                    pass
 
             founded_job_offer = f"{portal} -> {job.url}\n\n{response.content}"
 

@@ -18,7 +18,7 @@ class JobOffer(BaseModel):
     )
     url: str = Field(description="Direct link to the posting")
     salary_range: Optional[str] = Field(
-        default="N/A", description="Salary info if available"
+        default=None, description="Salary info if available"
     )
     match_score: float = Field(
         default=0.0, description="Semantic match score from 0 to 1"
@@ -58,12 +58,8 @@ class AgenticHireState(TypedDict, total=False):
     shortlisted_jobs: List[JobOffer]
 
     # Final generated documents (Cover letters, CV tweaks)
-    # Key: job_id, Value: dict with content
-    applications: dict
-
-    # A list of technical keywords or requirements extracted from the CV
-    # to guide the Scout's search
-    search_queries: List[str]
+    # Key: job_id, Value: dict with evaluation content
+    applications: dict[str, dict[str, str]]
 
     # Track which step we are currently in or any errors
     status: str

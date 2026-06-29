@@ -16,16 +16,16 @@ async def job_search_tool(query: str) -> str:
     logger.debug(f"[ORIO] Connecting to: {config.oriosearch_base_url}")
     payload: dict[str, str | int] = {
         "query": query,
-        "num_results": 10,
-        "search_depth": "advanced",
+        "num_results": config.oriosearch_num_results,
+        "search_depth": config.oriosearch_search_depth,
     }
 
-    max_retries = 3
-    retry_delay = 1  # Start with 1 second
+    max_retries = config.oriosearch_max_retries
+    retry_delay = config.oriosearch_retry_delay_s
 
     for attempt in range(max_retries):
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=config.oriosearch_timeout) as client:
                 url = f"{config.oriosearch_base_url}/search"
                 logger.debug(
                     f"[ORIO] Attempt {attempt + 1}/{max_retries}: Sending request to: {url}"

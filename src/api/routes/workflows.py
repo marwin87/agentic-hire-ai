@@ -102,7 +102,6 @@ async def search_jobs_workflow(
             "status": "Starting orchestration...",
             "max_offers": len(request.jobs) if request.jobs else 10,
             "scout_runs": 0,
-            "search_queries": [],
             "seen_jobs": [],
             "score_threshold": request.score_threshold,
         }

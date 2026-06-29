@@ -97,7 +97,7 @@ def test_job_parser_parse_success(
 
 
 def test_job_parser_parse_error_handling(
-    mock_config: MagicMock, mock_chat_openai: Tuple[MagicMock, MagicMock], capsys: Any
+    mock_config: MagicMock, mock_chat_openai: Tuple[MagicMock, MagicMock]
 ) -> None:
     _, mock_llm_instance = mock_chat_openai
 
@@ -111,5 +111,3 @@ def test_job_parser_parse_error_handling(
     parsed_jobs = parser.parse("Some raw text")
 
     assert parsed_jobs == []
-    captured = capsys.readouterr()
-    assert "❌ Error during job parsing: LLM parsing failed" in captured.out

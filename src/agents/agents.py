@@ -89,8 +89,12 @@ class AgentFactory:
         self.job_validator = JobValidator(llm=validator_llm)
 
 
-# Function to get an AgentFactory instance.
-# This allows for lazy initialization and easier mocking in tests.
+_factory_cache: dict[str, AgentFactory] = {}
+
+
 def get_agent_factory(user_id: UUID | None = None) -> AgentFactory:
-    """Returns a new instance of AgentFactory scoped to the given user_id."""
-    return AgentFactory(user_id=user_id)
+    """Returns a cached AgentFactory instance scoped to the given user_id."""
+    cache_key = str(user_id) if user_id else "_default"
+    if cache_key not in _factory_cache:
+        _factory_cache[cache_key] = AgentFactory(user_id=user_id)
+    return _factory_cache[cache_key]

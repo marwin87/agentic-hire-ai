@@ -64,7 +64,7 @@ async def orchestrator_node(state: AgenticHireState) -> dict[str, Any]:
 
 async def tailor_node(state: AgenticHireState) -> dict[str, Any]:
     """Wrapper to add logging around tailor agent invocation."""
-    factory = get_agent_factory()
+    factory = get_agent_factory(user_id=state.get("user_id"))
     shortlisted_jobs = state.get("shortlisted_jobs", [])
     logger.info(
         f"[ORCHESTRATOR] Invoking Tailor for {len(shortlisted_jobs)} shortlisted jobs"

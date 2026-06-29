@@ -88,25 +88,23 @@ def _display_results(final_state: dict[str, Any]) -> None:
         print("-" * 20)
 
 
-def main() -> None:
-    _configure_application()
-    logger.info("Starting AgenticHire AI main process.")
-
-    # Initialize database engine before creating agents
-    asyncio.run(init_db(config))
-
+async def _run_workflow() -> None:
+    await init_db(config)
     try:
-        # Get the factory and build the graph
         factory_instance = get_agent_factory()
         app_instance = build_graph()
-
         cv_manager = _prepare_cv_data(config.cv_file_path, factory_instance)
         initial_state = _initialize_state(cv_manager, config)
         final_state = _run_graph(initial_state, app_instance)
         _display_results(final_state)
     finally:
-        # Clean up database connections
-        asyncio.run(close_db())
+        await close_db()
+
+
+def main() -> None:
+    _configure_application()
+    logger.info("Starting AgenticHire AI main process.")
+    asyncio.run(_run_workflow())
 
 
 if __name__ == "__main__":

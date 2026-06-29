@@ -33,7 +33,6 @@ def initial_state() -> AgenticHireState:
         max_offers=5,
         scout_runs=0,
         status="Initial",
-        search_queries=[],
         shortlisted_jobs=[],
         applications={},
         seen_jobs=[],

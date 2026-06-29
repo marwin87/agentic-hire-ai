@@ -3,6 +3,7 @@ from typing import List
 from pydantic import BaseModel, SecretStr
 from langchain_openai import ChatOpenAI
 from src.schema.state import JobOffer
+from loguru import logger
 
 
 class JobOfferList(BaseModel):
@@ -17,11 +18,11 @@ class JobParser:
     converts them into structured JobOffer objects.
     """
 
-    def __init__(self, model_name: str = "gpt-4o-mini"):
-        # Cheaper/faster model for parsing tasks
+    def __init__(self, model_name: str | None = None) -> None:
+        actual_model = model_name or config.parser_model_name
         api_key: SecretStr | None = config.openrouter_api_key
         self.llm = ChatOpenAI(
-            model=model_name,
+            model=actual_model,
             temperature=0,
             base_url=config.openrouter_base_url,
             api_key=api_key,
@@ -54,5 +55,5 @@ class JobParser:
                 return response.offers
             return []
         except Exception as e:
-            print(f"❌ Error during job parsing: {e}")
+            logger.error(f"Error during job parsing: {e}")
             return []

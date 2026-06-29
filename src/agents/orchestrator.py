@@ -1,6 +1,7 @@
 from src.schema.state import AgenticHireState, JobOffer
 from src.tools.vectordb import CVVectorManager
 from src.utils.progress import emit
+from src.config.settings import config
 from pydantic import BaseModel, Field
 from loguru import logger
 from typing import Any
@@ -53,11 +54,15 @@ class OrchestratorAgent:
 
             # 1. RAG Step: Get specific context from CV for THIS job
             # We search for the job title and description in our vectors
-            description_snippet = job.description[:200] if job.description else ""
+            description_snippet = (
+                job.description[: config.orchestrator_description_snippet_chars]
+                if job.description
+                else ""
+            )
             search_query = f"{job.title} {description_snippet}"
             # Use async method directly (pgvector queries are async-native)
             relevant_cv_parts = await self.vector_manager.get_context_async(
-                search_query, 3
+                search_query, config.orchestrator_rag_context_chunks
             )
 
             logger.debug(f"RAG retrieved context length: {len(relevant_cv_parts)}")
@@ -88,9 +93,10 @@ class OrchestratorAgent:
 
             # 3. Decision Step: Add to shortlist if it's a strong match
             if rating.score >= threshold:
-                job.match_score = rating.score
-                job.analysis = rating.reasoning
-                shortlisted_jobs.append(job)
+                scored_job = job.model_copy(
+                    update={"match_score": rating.score, "analysis": rating.reasoning}
+                )
+                shortlisted_jobs.append(scored_job)
                 await emit("orchestrator", f"  → {int(rating.score * 100)}% match ✅")
                 logger.info(f"✅ Match accepted! Score: {rating.score}")
                 logger.info(f"[ORCHESTRATOR] Reasoning: {rating.reasoning}")
