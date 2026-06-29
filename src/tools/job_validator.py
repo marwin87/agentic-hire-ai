@@ -27,9 +27,22 @@ class JobValidator:
 
     def __init__(self, llm: Any) -> None:
         self.checker = llm.with_structured_output(ExpirationCheck)
-        self.validation_cache: Dict[str, bool] = (
-            {} if config.validator_cache_enabled else {}
-        )
+        # (result, monotonic_timestamp) — evicted on read when older than validator_cache_ttl_s
+        self._cache: Dict[str, tuple[bool, float]] = {}
+
+    def _cache_get(self, url: str) -> bool | None:
+        """Returns cached result or None if absent or expired."""
+        entry = self._cache.get(url)
+        if entry is None:
+            return None
+        result, ts = entry
+        if time.monotonic() - ts > config.validator_cache_ttl_s:
+            del self._cache[url]
+            return None
+        return result
+
+    def _cache_set(self, url: str, result: bool) -> None:
+        self._cache[url] = (result, time.monotonic())
 
     async def validate_job_with_reason(self, job: JobOffer) -> JobValidationResult:
         """Validate a job and return a structured result with failure reason and duration.
@@ -53,17 +66,18 @@ class JobValidator:
                 duration_ms=elapsed_ms(),
             )
 
-        if config.validator_cache_enabled and job.url in self.validation_cache:
-            cached = self.validation_cache[job.url]
-            logger.debug(f"[JOB_VALIDATOR] Cache hit for {job.url}: {cached}")
-            if cached:
-                return JobValidationResult(is_valid=True, duration_ms=elapsed_ms())
-            return JobValidationResult(
-                is_valid=False,
-                reason_code=ValidationFailureReason.HTTP_ERROR,
-                reason_text="Previously validated as invalid (cached)",
-                duration_ms=elapsed_ms(),
-            )
+        if config.validator_cache_enabled:
+            cached = self._cache_get(job.url)
+            if cached is not None:
+                logger.debug(f"[JOB_VALIDATOR] Cache hit for {job.url}: {cached}")
+                if cached:
+                    return JobValidationResult(is_valid=True, duration_ms=elapsed_ms())
+                return JobValidationResult(
+                    is_valid=False,
+                    reason_code=ValidationFailureReason.HTTP_ERROR,
+                    reason_text="Previously validated as invalid (cached)",
+                    duration_ms=elapsed_ms(),
+                )
 
         try:
             logger.info(
@@ -81,7 +95,7 @@ class JobValidator:
                     f"[JOB_VALIDATOR] HTTP Error {response.status_code} when accessing {job.url}"
                 )
                 if config.validator_cache_enabled:
-                    self.validation_cache[job.url] = False
+                    self._cache_set(job.url, False)
                 return JobValidationResult(
                     is_valid=False,
                     reason_code=ValidationFailureReason.HTTP_ERROR,
@@ -107,7 +121,7 @@ class JobValidator:
                     f"[JOB_VALIDATOR] Job '{job.title}' is expired/inactive. Reason: {reason_text}"
                 )
                 if config.validator_cache_enabled:
-                    self.validation_cache[job.url] = False
+                    self._cache_set(job.url, False)
                 return JobValidationResult(
                     is_valid=False,
                     reason_code=ValidationFailureReason.JOB_EXPIRED,
@@ -117,7 +131,7 @@ class JobValidator:
 
             logger.info(f"[JOB_VALIDATOR] Job '{job.title}' is active.")
             if config.validator_cache_enabled:
-                self.validation_cache[job.url] = True
+                self._cache_set(job.url, True)
             return JobValidationResult(is_valid=True, duration_ms=elapsed_ms())
 
         except httpx.TimeoutException:
@@ -125,7 +139,7 @@ class JobValidator:
                 f"[JOB_VALIDATOR] Timeout ({config.validator_timeout}s) for {job.url}"
             )
             if config.validator_cache_enabled:
-                self.validation_cache[job.url] = False
+                self._cache_set(job.url, False)
             return JobValidationResult(
                 is_valid=False,
                 reason_code=ValidationFailureReason.VALIDATION_TIMEOUT,
@@ -135,7 +149,7 @@ class JobValidator:
         except httpx.HTTPError as e:
             logger.error(f"[JOB_VALIDATOR] Request failed for {job.url}: {str(e)}")
             if config.validator_cache_enabled:
-                self.validation_cache[job.url] = False
+                self._cache_set(job.url, False)
             return JobValidationResult(
                 is_valid=False,
                 reason_code=ValidationFailureReason.HTTP_ERROR,

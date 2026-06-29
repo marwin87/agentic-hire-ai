@@ -99,6 +99,9 @@ class AppConfig(BaseSettings):
     validator_cache_enabled: bool = Field(
         True, description="Cache job validation results."
     )
+    validator_cache_ttl_s: int = Field(
+        3600, description="Seconds before a cached validation result expires (1 hour)."
+    )
 
     # OrioSearch settings
     oriosearch_num_results: int = Field(

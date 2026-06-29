@@ -25,6 +25,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+a,
+button {
+  cursor: pointer;
+}
+
 @keyframes fadeSlideIn {
   from {
     opacity: 0;

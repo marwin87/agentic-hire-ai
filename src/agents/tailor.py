@@ -5,6 +5,29 @@ from urllib.parse import urlparse
 from loguru import logger
 from typing import Any
 
+_ADVISOR_SYSTEM_PROMPT = "You are a highly critical and skeptical Career Advisor."
+
+_EVALUATION_PROMPT_TEMPLATE = """\
+You are a highly critical and skeptical Career Advisor.
+Your goal is to evaluate if it's genuinely worth applying for this job, returning ONLY a single sentence.
+
+CANDIDATE CV CONTEXT:
+{resume_context}
+
+TARGET JOB:
+Title: {title}
+Company: {company}
+Description: {description}
+
+MATCH REASONING (from Orchestrator):
+{analysis}
+
+INSTRUCTIONS:
+1. Analyze the match between the CV and the job description.
+2. Be skeptical. Look for reasons why it might NOT be a great fit (e.g., missing skills, seniority mismatch).
+3. Write EXACTLY ONE concise sentence stating whether it's worth applying or not, and briefly why.\
+"""
+
 
 class TailorAgent:
     """
@@ -39,34 +62,19 @@ class TailorAgent:
                 f"[TAILOR] Generating application materials for: {job.title} at {job.company}..."
             )
 
-            prompt = f"""
-            You are a highly critical and skeptical Career Advisor. 
-            Your goal is to evaluate if it's genuinely worth applying for this job, returning ONLY a single sentence.
-
-            CANDIDATE CV CONTEXT:
-            {resume_context}
-
-            TARGET JOB:
-            Title: {job.title}
-            Company: {job.company}
-            Description: {job.description}
-
-            MATCH REASONING (from Orchestrator):
-            {job.analysis}
-
-            INSTRUCTIONS:
-            1. Analyze the match between the CV and the job description.
-            2. Be skeptical. Look for reasons why it might NOT be a great fit (e.g., missing skills, seniority mismatch).
-            3. Write EXACTLY ONE concise sentence stating whether it's worth applying or not, and briefly why.
-            """
+            prompt = _EVALUATION_PROMPT_TEMPLATE.format(
+                resume_context=resume_context,
+                title=job.title,
+                company=job.company,
+                description=job.description or "",
+                analysis=job.analysis or "",
+            )
 
             # Generate the content
             logger.debug("Requesting LLM to generate tailor analysis...")
             response = await self.llm.ainvoke(
                 [
-                    SystemMessage(
-                        content="You are a highly critical and skeptical Career Advisor."
-                    ),
+                    SystemMessage(content=_ADVISOR_SYSTEM_PROMPT),
                     HumanMessage(content=prompt),
                 ]
             )

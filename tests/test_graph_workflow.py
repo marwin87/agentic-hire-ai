@@ -276,3 +276,80 @@ async def test_tailor_node_invocation(
 
     mock_factory.tailor.assert_called_once()
     assert "applications" in result
+
+
+# ===== End-to-End Workflow Test =====
+
+
+@patch("src.graph.get_agent_factory")
+@pytest.mark.asyncio
+async def test_full_workflow_scout_to_applications(
+    mock_get_factory: Any,
+    mock_job_offer: JobOffer,
+) -> None:
+    """End-to-end: scout → validate → orchestrator → tailor produces applications."""
+    scored_job = mock_job_offer.model_copy(
+        update={"match_score": 0.85, "analysis": "Strong Python match"}
+    )
+
+    mock_factory = MagicMock()
+    mock_factory.scout = AsyncMock(
+        return_value={
+            "found_jobs": [mock_job_offer],
+            "scout_runs": 1,
+            "seen_jobs": [mock_job_offer.url],
+            "status": "Scout found 1 job",
+        }
+    )
+    mock_factory.job_validator.is_job_valid = AsyncMock(return_value=True)
+    mock_factory.orchestrator = AsyncMock(
+        return_value={
+            "shortlisted_jobs": [scored_job],
+            "rejected_jobs": [],
+            "status": "Orchestrator shortlisted 1 job.",
+        }
+    )
+    mock_factory.tailor = AsyncMock(
+        return_value={
+            "applications": {
+                mock_job_offer.id: {
+                    "founded_job_offer": "example.com -> https://example.com/jobs/123\n\nWorth applying.",
+                    "job_title": mock_job_offer.title,
+                    "company": mock_job_offer.company,
+                }
+            },
+            "status": "Tailor generated 1 personalized applications.",
+        }
+    )
+    mock_get_factory.return_value = mock_factory
+
+    graph = build_graph()
+    initial = cast(
+        AgenticHireState,
+        {
+            "target_criteria": "Python developer roles",
+            "resume_context": "Senior Python developer with 5 years experience",
+            "found_jobs": [],
+            "valid_jobs": [],
+            "shortlisted_jobs": [],
+            "rejected_jobs": [],
+            "applications": {},
+            "seen_jobs": [],
+            "max_offers": 1,
+            "max_scout_runs": 3,
+            "scout_runs": 0,
+            "status": "Starting",
+        },
+    )
+
+    result = await graph.ainvoke(initial)
+
+    assert "applications" in result
+    assert mock_job_offer.id in result["applications"]
+    app = result["applications"][mock_job_offer.id]
+    assert app["job_title"] == mock_job_offer.title
+    assert app["company"] == mock_job_offer.company
+
+    mock_factory.scout.assert_called_once()
+    mock_factory.orchestrator.assert_called_once()
+    mock_factory.tailor.assert_called_once()

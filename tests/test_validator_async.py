@@ -333,3 +333,41 @@ async def test_validate_job_llm_retry_exhaustion(
 
     assert result.is_valid is False
     assert result.reason_code == ValidationFailureReason.JOB_EXPIRED
+
+
+# ===== Cache TTL Tests =====
+
+
+def test_cache_ttl_evicts_stale_entries(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """Cache entries older than validator_cache_ttl_s should be evicted on read."""
+    validator._cache_set(sample_job.url, True)
+    assert validator._cache_get(sample_job.url) is True
+
+    # Age the entry beyond TTL by back-dating its timestamp
+    result, ts = validator._cache[sample_job.url]
+    from src.config.settings import config
+
+    validator._cache[sample_job.url] = (result, ts - config.validator_cache_ttl_s - 1)
+
+    # Stale entry should be evicted and None returned
+    assert validator._cache_get(sample_job.url) is None
+    assert sample_job.url not in validator._cache
+
+
+def test_cache_ttl_keeps_fresh_entries(
+    validator: JobValidator, sample_job: JobOffer
+) -> None:
+    """Cache entries within TTL should be served without re-validation."""
+    validator._cache_set(sample_job.url, False)
+    assert validator._cache_get(sample_job.url) is False
+    # Entry should still be in cache (not evicted)
+    assert sample_job.url in validator._cache
+
+
+def test_cache_get_returns_none_for_missing_url(
+    validator: JobValidator,
+) -> None:
+    """Cache miss returns None without raising."""
+    assert validator._cache_get("https://nonexistent.example.com/job") is None

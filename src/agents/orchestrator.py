@@ -7,6 +7,26 @@ from loguru import logger
 from typing import Any
 from uuid import UUID
 
+_MATCH_PROMPT_TEMPLATE = """\
+You are an expert Career Matchmaker. Compare the Job Description with the Candidate's Experience.
+
+JOB DESCRIPTION:
+{title} at {company}
+{description}
+
+CANDIDATE EVIDENCE:
+{cv_context}
+
+SCORING RULES:
+- 1.0: Perfect match (all tech stack and seniority levels align).
+- 0.8: Great match (has core skills, maybe missing one secondary skill).
+- 0.6: Good match (has the foundation, can learn the rest).
+- < 0.5: Poor match.
+
+Consider synonyms (e.g., 'GenAI' matches 'LLM' or 'GPT').
+Don't penalize if 'Remote' isn't on the CV if the tech skills are a 100% match.\
+"""
+
 
 class MatchRating(BaseModel):
     """Structured output for the matching logic."""
@@ -68,25 +88,12 @@ class OrchestratorAgent:
             logger.debug(f"RAG retrieved context length: {len(relevant_cv_parts)}")
 
             # 2. Evaluation Step: Compare Job vs. CV Evidence
-            prompt = f"""
-            You are an expert Career Matchmaker. Compare the Job Description with the Candidate's Experience.
-
-            JOB DESCRIPTION:
-            {job.title} at {job.company}
-            {job.description}
-
-            CANDIDATE EVIDENCE:
-            {relevant_cv_parts}
-
-            SCORING RULES:
-            - 1.0: Perfect match (all tech stack and seniority levels align).
-            - 0.8: Great match (has core skills, maybe missing one secondary skill).
-            - 0.6: Good match (has the foundation, can learn the rest).
-            - < 0.5: Poor match.
-
-            Consider synonyms (e.g., 'GenAI' matches 'LLM' or 'GPT').
-            Don't penalize if 'Remote' isn't on the CV if the tech skills are a 100% match.
-            """
+            prompt = _MATCH_PROMPT_TEMPLATE.format(
+                title=job.title,
+                company=job.company,
+                description=job.description or "",
+                cv_context=relevant_cv_parts,
+            )
 
             logger.debug("Requesting LLM match rating evaluation...")
             rating = await self.judge.ainvoke(prompt)
