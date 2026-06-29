@@ -58,12 +58,8 @@ class CVVectorManager:
         )
 
     def _run_async(self, coro: Any) -> Any:
-        """Run an async coroutine from sync context (thread-safe)."""
-        runner = asyncio.Runner()
-        try:
-            return runner.run(coro)  # type: ignore[return-value]
-        finally:
-            runner.close()
+        """Run an async coroutine from sync context."""
+        return asyncio.run(coro)  # type: ignore[return-value]
 
     @staticmethod
     def _calculate_file_hash(file_path: str) -> str:
