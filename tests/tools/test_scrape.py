@@ -3,7 +3,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from src.tools.scrape import scrape_webpage_tool
+from src.tools.scrape import scrape_webpage_tool, JOB_LINKS_PREFIX, JOB_POSTING_PREFIX
 
 
 def _build_playwright_mock(
@@ -113,3 +113,51 @@ async def test_unexpected_exception() -> None:
 
     assert result.startswith("Error:")
     assert "RuntimeError" in result
+
+
+# ===== Protocol Constants Tests =====
+
+
+def test_job_links_prefix_constant_matches_scraper_output() -> None:
+    """JOB_LINKS_PREFIX must match the prefix scrape_webpage_tool actually emits."""
+    assert JOB_LINKS_PREFIX == "JOB_LINKS:"
+
+
+def test_job_posting_prefix_constant_matches_scraper_output() -> None:
+    """JOB_POSTING_PREFIX must match the prefix _format_job_posting actually emits."""
+    assert JOB_POSTING_PREFIX == "Title:"
+
+
+@pytest.mark.asyncio
+async def test_listing_page_output_starts_with_job_links_prefix() -> None:
+    """scrape_webpage_tool returns JOB_LINKS_PREFIX when a listing page is detected."""
+    mock_ctx = _build_playwright_mock(
+        json_ld=None,
+        job_links=[
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+            "https://example.com/job/3",
+        ],
+    )
+
+    with patch("src.tools.scrape.async_playwright", return_value=mock_ctx):
+        result = await scrape_webpage_tool.ainvoke({"url": "https://example.com/jobs"})
+
+    assert result.startswith(JOB_LINKS_PREFIX)
+
+
+@pytest.mark.asyncio
+async def test_json_ld_page_output_starts_with_job_posting_prefix() -> None:
+    """scrape_webpage_tool returns JOB_POSTING_PREFIX when JSON-LD job data is found."""
+    json_ld = {
+        "@type": "JobPosting",
+        "title": "Python Engineer",
+        "hiringOrganization": {"name": "Acme Corp"},
+        "description": "Build great things with Python.",
+    }
+    mock_ctx = _build_playwright_mock(json_ld=json_ld)
+
+    with patch("src.tools.scrape.async_playwright", return_value=mock_ctx):
+        result = await scrape_webpage_tool.ainvoke({"url": "https://acme.com/job/1"})
+
+    assert result.startswith(JOB_POSTING_PREFIX)

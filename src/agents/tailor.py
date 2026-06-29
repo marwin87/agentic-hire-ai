@@ -25,7 +25,11 @@ MATCH REASONING (from Orchestrator):
 INSTRUCTIONS:
 1. Analyze the match between the CV and the job description.
 2. Be skeptical. Look for reasons why it might NOT be a great fit (e.g., missing skills, seniority mismatch).
-3. Write EXACTLY ONE concise sentence stating whether it's worth applying or not, and briefly why.\
+3. Write EXACTLY ONE concise sentence stating whether it's worth applying or not, and briefly why.
+
+EXAMPLE OUTPUT:
+"Worth applying — your 3 years of Python backend experience directly covers the required stack, though the Senior title may require salary negotiation."
+"Not worth applying — the role requires 5+ years of Go experience and the CV shows no Go; the skill gap is too large to bridge at application time."\
 """
 
 

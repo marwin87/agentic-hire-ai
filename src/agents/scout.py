@@ -12,7 +12,7 @@ from langchain_core.messages import (
 )
 from src.schema.state import AgenticHireState, JobOffer
 from src.tools.search import job_search_tool
-from src.tools.scrape import scrape_webpage_tool
+from src.tools.scrape import scrape_webpage_tool, JOB_LINKS_PREFIX, JOB_POSTING_PREFIX
 from src.utils import JobParser
 from src.utils.progress import emit
 from src.config.settings import config
@@ -240,13 +240,13 @@ class ScoutAgent:
                         logger.debug(f"[SCOUT] scrape_webpage_tool args: {tool_args}")
                         raw_results = await scrape_webpage_tool.ainvoke(tool_args)
                         result_str = str(raw_results)
-                        if result_str.startswith("JOB_LINKS:"):
+                        if result_str.startswith(JOB_LINKS_PREFIX):
                             n = len(result_str.strip().splitlines()) - 1
                             await emit(
                                 "scout",
                                 f"  → Found {n} job links, scraping individually...",
                             )
-                        elif result_str.startswith("Title:"):
+                        elif result_str.startswith(JOB_POSTING_PREFIX):
                             await emit("scout", "  → Job offer found ✓")
                         messages.append(
                             ToolMessage(

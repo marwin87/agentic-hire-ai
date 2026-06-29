@@ -27,10 +27,18 @@ from langchain_text_splitters import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
+from pydantic import BaseModel, Field
 from src.db.repositories import CVEmbeddingRepository, CVFileRepository
 from src.db.models import CVEmbedding
 from src.db.database import get_session_factory
 from src.config.settings import config
+
+
+class CVDetectionResult(BaseModel):
+    """Structured output for CV/resume page detection."""
+
+    is_cv: bool = Field(description="True if the document page is a CV or resume")
+    reason: str = Field(description="Brief description of what the document contains")
 
 
 class CVVectorManager:
@@ -88,15 +96,12 @@ class CVVectorManager:
 
     def _detect_if_cv(self, b64_img: str) -> None:
         """Raises ValueError if the first page does not appear to be a CV/resume."""
+        detector = self.vision_model.with_structured_output(CVDetectionResult)
         human_msg = HumanMessage(
             content=[
                 {
                     "type": "text",
-                    "text": (
-                        "Is this document a CV or resume?\n"
-                        "Start your reply with YES or NO, then in 1 sentence "
-                        "explain what you see and why you think so."
-                    ),
+                    "text": "Examine this document page. Is it a CV or resume? Describe what you see.",
                 },
                 {
                     "type": "image_url",
@@ -107,10 +112,9 @@ class CVVectorManager:
                 },
             ]
         )
-        response = self.vision_model.invoke([human_msg])
-        answer = str(response.content).strip()
-        if not answer.upper().startswith("YES"):
-            raise ValueError(answer)
+        result: CVDetectionResult = detector.invoke([human_msg])
+        if not result.is_cv:
+            raise ValueError(result.reason)
 
     def _process_single_page(self, page_data: tuple) -> str:
         i, b64_img, total = page_data

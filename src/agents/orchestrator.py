@@ -24,7 +24,13 @@ SCORING RULES:
 - < 0.5: Poor match.
 
 Consider synonyms (e.g., 'GenAI' matches 'LLM' or 'GPT').
-Don't penalize if 'Remote' isn't on the CV if the tech skills are a 100% match.\
+Don't penalize if 'Remote' isn't on the CV if the tech skills are a 100% match.
+
+FEW-SHOT EXAMPLES:
+• Score 1.0 — Job: "Senior Python Engineer, Django + PostgreSQL, 5+ yrs". CV: "6 yrs Django, PostgreSQL admin, DRF". All required tech and seniority align exactly.
+• Score 0.8 — Job: "ML Engineer, PyTorch, MLflow, AWS". CV: "Python ML, TensorFlow, DVC, GCP". Core ML skills match; different framework/cloud, both easily transferable.
+• Score 0.6 — Job: "Backend Developer, Go + gRPC, 3+ yrs". CV: "Python backend, REST APIs, 2 yrs". Foundation present; Go would need ramping, seniority close enough.
+• Score 0.3 — Job: "iOS Developer, Swift + SwiftUI, 4+ yrs". CV: "Python web developer, Django, React". No mobile, no Swift — fundamentally different stack.\
 """
 
 
