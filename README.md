@@ -9,22 +9,26 @@ An AI-powered agent system that autonomously searches, validates, evaluates, and
 <table>
   <tr>
     <td align="center">
-      <img src="data/preview/prev_main.jpg" width="420" alt="Dashboard — CV upload and workflow controls" /><br/>
-      <em>Dashboard — CV upload and workflow controls</em>
+      <img src="data/preview/prev_main.jpg" width="420" alt="Dashboard — CV upload and job search sidebar, agent team ready to start" /><br/>
+      <em>Dashboard — CV upload, search criteria, and the agent team ready to go</em>
     </td>
     <td align="center">
-      <img src="data/preview/prev_search.jpg" width="420" alt="Search — job criteria and score threshold configuration" /><br/>
-      <em>Search — job criteria and score threshold</em>
+      <img src="data/preview/prev_my_jobs.jpg" width="420" alt="Job history — discovered jobs with match scores and per-job actions" /><br/>
+      <em>Job history — match scores and per-job actions</em>
+    </td>
+  </tr>
+</table>
+<table>
+  <tr>
+    <td align="center">
+      <img src="data/preview/prev_results_light.jpg" width="260" alt="Completed agent workflow with locked criteria, rescout loop, and shortlisted matches — Light theme" />
+      <img src="data/preview/prev_results_dark.jpg" width="260" alt="Completed agent workflow with locked criteria, rescout loop, and shortlisted matches — Dark theme" />
+      <img src="data/preview/prev_results_cyber.jpg" width="260" alt="Completed agent workflow with locked criteria, rescout loop, and shortlisted matches — Cyberpunk theme" />
     </td>
   </tr>
   <tr>
-    <td align="center">
-      <img src="data/preview/prev_results.jpg" width="420" alt="Results — real-time agent workflow with streaming SSE tiles" /><br/>
-      <em>Results — real-time agent workflow streaming</em>
-    </td>
-    <td align="center">
-      <img src="data/preview/prev_my_jobs.jpg" width="420" alt="Job history — match scores and per-job actions" /><br/>
-      <em>Job history — match scores and per-job actions</em>
+    <td colspan="2" align="center">
+      <em>Live agent workflow, criteria recap, and shortlisted matches — shown in different themes</em>
     </td>
   </tr>
 </table>
@@ -76,7 +80,10 @@ Generates a concise final evaluation per shortlisted job using orchestrator reas
 Full-featured web interface with:
 - JWT-based authentication (sign up, login, sign out)
 - CV upload with persistence across sessions
-- Real-time agent workflow with streaming SSE tiles; results restored on navigation
+- Sidebar + real-time agent activity feed layout, with streaming SSE tiles; results restored on navigation
+- A "Criteria locked" recap summarizing the CV, search criteria, and score threshold once a search starts
+- CV upload, search criteria, and score threshold lock while a workflow is running
+- Light, Dark, and Cyberpunk themes, switchable from the nav bar and persisted per session
 - Configurable score threshold per search
 - Job history page showing match scores from DB, with per-job delete and clear-all
 - Clear button to reset the search conversation (active only when no workflow is running)
@@ -190,7 +197,9 @@ agentic-hire-ai/
 │   │   ├── login/              # Auth pages
 │   │   ├── signup/
 │   │   └── api/                # Proxy route handlers
-│   ├── components/             # Shared UI components
+│   ├── context/                # ThemeProvider (Light/Dark/Cyberpunk), WorkflowStateProvider
+│   ├── lib/                    # agent-config, workflow-types, score-badge, api helpers
+│   ├── components/             # Shared UI components (NavLinks, ThemeToggle, LogoutButton)
 │   ├── hooks/                  # useWorkflowStream, useCvUpload
 │   ├── Dockerfile
 │   └── docker-entrypoint.sh
