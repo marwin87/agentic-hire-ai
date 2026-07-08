@@ -115,9 +115,11 @@ function useCvUpload() {
 function CvUploadPanel({
     status,
     upload,
+    disabled,
 }: {
     status: CvStatus;
     upload: (file: File) => Promise<void>;
+    disabled?: boolean;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [dragging, setDragging] = useState(false);
@@ -169,7 +171,7 @@ function CvUploadPanel({
                     }}
                     onDragLeave={() => setDragging(false)}
                     onDrop={handleDrop}
-                    className={`flex items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-4 cursor-pointer transition select-none text-sm ${
+                    className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-6 py-5 cursor-pointer transition select-none text-sm text-center ${
                         dragging
                             ? "border-success bg-success-soft text-success"
                             : status.type === "uploading"
@@ -178,15 +180,15 @@ function CvUploadPanel({
                     }`}
                 >
                     {status.type === "uploading" ? (
-                        <>
+                        <span className="flex items-center gap-2">
                             <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin"/>
                             Uploading…
-                        </>
+                        </span>
                     ) : (
                         <>
                             <span className="text-lg">📄</span>
                             <span>Drop your PDF here, or <span className="text-accent font-medium">browse</span></span>
-                            <span className="text-xs text-muted">· max 10 MB</span>
+                            <span className="text-xs text-muted">Max 10 MB</span>
                         </>
                     )}
                 </div>
@@ -197,7 +199,8 @@ function CvUploadPanel({
                     </p>
                     <button
                         onClick={() => inputRef.current?.click()}
-                        className="rounded-xl px-4 py-2 text-sm border border-border text-muted hover:bg-surface-alt transition"
+                        disabled={disabled}
+                        className="rounded-xl px-4 py-2 text-sm border border-border text-muted hover:bg-surface-alt transition disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Replace CV
                     </button>
@@ -538,7 +541,7 @@ export default function DashboardPage() {
     const hasActivity = state.messages.length > 0;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 lg:h-full">
             {/* Sidebar: CV upload + search form */}
             <aside className="lg:sticky lg:top-8 space-y-5">
                 {/* CV upload */}
@@ -553,7 +556,7 @@ export default function DashboardPage() {
                         job listings.
                     </p>
                 </div>
-                <CvUploadPanel status={cvStatus} upload={cvUpload}/>
+                <CvUploadPanel status={cvStatus} upload={cvUpload} disabled={state.isStreaming}/>
 
                 {/* Search form */}
                 <div className="space-y-1.5">
@@ -573,7 +576,7 @@ export default function DashboardPage() {
                 >
                     <p className="text-sm font-semibold text-muted-strong">Job Search</p>
                     <textarea
-                        rows={2}
+                        rows={6}
                         value={criteria}
                         onChange={(e) => setCriteria(e.target.value)}
                         placeholder="e.g. Senior Python backend engineer, remote, fintech"
@@ -654,10 +657,10 @@ export default function DashboardPage() {
             </aside>
 
             {/* Main column: agent activity feed */}
-            <div className="min-w-0">
+            <div className="min-w-0 lg:flex lg:flex-col lg:h-full lg:min-h-0">
                 {/* Conversation feed */}
                 {hasActivity && (
-                    <div ref={feedRef} className="space-y-5 max-h-[60vh] lg:h-[calc(100vh-9rem)] overflow-y-auto pr-1">
+                    <div ref={feedRef} className="feed-scroll space-y-5 max-h-[60vh] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1">
                         {recap && (
                             <div className="rounded-xl border border-border bg-surface-alt px-4 py-3 text-sm text-muted-strong space-y-2">
                                 <div className="flex items-center gap-1.5 font-medium text-accent">

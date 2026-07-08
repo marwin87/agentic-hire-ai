@@ -32,8 +32,8 @@ export default async function DashboardLayout({
 
   return (
     <WorkflowStateProvider>
-      <div className="min-h-screen bg-surface-alt">
-        <nav className="bg-surface border-b border-border px-6 py-4 flex items-center justify-between">
+      <div className="min-h-screen lg:h-screen flex flex-col bg-surface-alt">
+        <nav className="shrink-0 bg-surface border-b border-border px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <span className="text-lg font-bold text-accent">
               AgenticHire AI
@@ -45,7 +45,7 @@ export default async function DashboardLayout({
             <LogoutButton email={email} />
           </div>
         </nav>
-        <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
+        <main className="lg:flex-1 lg:min-h-0 max-w-7xl mx-auto px-6 py-8 w-full">{children}</main>
       </div>
     </WorkflowStateProvider>
   );
