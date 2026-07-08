@@ -436,6 +436,52 @@ function ResultsPanel({result}: { result: OrchestrateResponse | null }) {
 
 const EMPTY_STATE_NODES: NodeName[] = ["orchestrator", "scout", "tailor"];
 
+// ── Search recap ──────────────────────────────────────────────────────────────
+
+type SearchRecap = { cvFilename: string; criteria: string; threshold: number };
+
+function describeThreshold(t: number): string {
+    if (t >= 0.85) return "very strict — only near-perfect matches will pass";
+    if (t >= 0.6) return "balanced — solid matches, not just perfect ones";
+    return "casting a wider net — more results, less precision";
+}
+
+function LockIcon({className}: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className}>
+            <rect x="5" y="11" width="14" height="9" rx="2"/>
+            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+        </svg>
+    );
+}
+
+function DocumentIcon({className}: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className}>
+            <path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+            <path d="M14 3v4h4"/>
+        </svg>
+    );
+}
+
+function SearchIcon({className}: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className}>
+            <circle cx="11" cy="11" r="7"/>
+            <path d="m20 20-3.5-3.5"/>
+        </svg>
+    );
+}
+
+function GaugeIcon({className}: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className}>
+            <path d="M12 12 16 8"/>
+            <path d="M4 13a8 8 0 1 1 16 0"/>
+        </svg>
+    );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -452,6 +498,12 @@ export default function DashboardPage() {
     const [threshold, setThreshold] = useState(() => {
         try { return sessionStorage.getItem("ah_last_threshold") ?? "0.6"; } catch { return "0.6"; }
     });
+    const [recap, setRecap] = useState<SearchRecap | null>(() => {
+        try {
+            const raw = sessionStorage.getItem("ah_last_recap");
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    });
     const feedRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -465,7 +517,22 @@ export default function DashboardPage() {
             sessionStorage.setItem("ah_last_criteria", criteria.trim());
             sessionStorage.setItem("ah_last_threshold", threshold);
         } catch { /* ignore */ }
+        if (cvStatus.type === "success") {
+            const next: SearchRecap = {
+                cvFilename: cvStatus.filename,
+                criteria: criteria.trim(),
+                threshold: parseFloat(threshold) || 0.6,
+            };
+            setRecap(next);
+            try { sessionStorage.setItem("ah_last_recap", JSON.stringify(next)); } catch { /* ignore */ }
+        }
         startWorkflow(criteria.trim(), parseFloat(threshold) || 0.6);
+    }
+
+    function handleClear() {
+        setRecap(null);
+        try { sessionStorage.removeItem("ah_last_recap"); } catch { /* ignore */ }
+        clearResults();
     }
 
     const hasActivity = state.messages.length > 0;
@@ -537,7 +604,7 @@ export default function DashboardPage() {
                         {hasActivity && (
                             <button
                                 type="button"
-                                onClick={clearResults}
+                                onClick={handleClear}
                                 disabled={state.isStreaming}
                                 className="rounded-xl px-4 py-2 text-sm border border-border text-muted hover:bg-surface-alt transition disabled:opacity-40 disabled:cursor-not-allowed"
                             >
@@ -591,6 +658,28 @@ export default function DashboardPage() {
                 {/* Conversation feed */}
                 {hasActivity && (
                     <div ref={feedRef} className="space-y-5 max-h-[60vh] lg:h-[calc(100vh-9rem)] overflow-y-auto pr-1">
+                        {recap && (
+                            <div className="rounded-xl border border-border bg-surface-alt px-4 py-3 text-sm text-muted-strong space-y-2">
+                                <div className="flex items-center gap-1.5 font-medium text-accent">
+                                    <LockIcon className="w-3.5 h-3.5 shrink-0"/>
+                                    Criteria locked
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <DocumentIcon className="w-3.5 h-3.5 mt-0.5 text-muted shrink-0"/>
+                                    <span>CV <span className="font-medium">{recap.cvFilename}</span> uploaded</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <SearchIcon className="w-3.5 h-3.5 mt-0.5 text-muted shrink-0"/>
+                                    <span>Looking for <span className="font-medium">&quot;{recap.criteria}&quot;</span></span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <GaugeIcon className="w-3.5 h-3.5 mt-0.5 text-muted shrink-0"/>
+                                    <span>
+                                        Score threshold <span className="font-medium">{recap.threshold}</span> — {describeThreshold(recap.threshold)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                         {state.messages.map((msg) => (
                             <AgentMessage
                                 key={msg.id}
