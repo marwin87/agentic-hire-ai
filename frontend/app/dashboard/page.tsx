@@ -418,7 +418,7 @@ function ResultsPanel({result}: { result: OrchestrateResponse | null }) {
                     )}.
                 </div>
                 {sorted.length > 0 && (
-                    <div className="grid gap-3 max-w-lg">
+                    <div className="grid gap-3 sm:grid-cols-2">
                         {sorted.map((job) => <JobCard key={job.id} job={job}/>)}
                     </div>
                 )}
@@ -471,66 +471,69 @@ export default function DashboardPage() {
     const hasActivity = state.messages.length > 0;
 
     return (
-        <div className="flex flex-col gap-5 max-w-4xl mx-auto">
-            {/* CV upload */}
-            <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                    <span
-                        className="w-5 h-5 rounded-full bg-accent text-accent-contrast text-xs font-bold flex items-center justify-center shrink-0">1</span>
-                    <p className="text-sm font-semibold text-muted-strong">Upload your CV</p>
-                </div>
-                <p className="text-xs text-muted pl-7">
-                    Upload your resume as a PDF. It will be parsed and embedded so the AI can match your skills against
-                    job listings.
-                </p>
-            </div>
-            <CvUploadPanel status={cvStatus} upload={cvUpload}/>
-
-            {/* Search form */}
-            <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                    <span
-                        className="w-5 h-5 rounded-full bg-accent text-accent-contrast text-xs font-bold flex items-center justify-center shrink-0">2</span>
-                    <p className="text-sm font-semibold text-muted-strong">Describe the role you&apos;re looking for</p>
-                </div>
-                <p className="text-xs text-muted pl-7">
-                    Be as specific as you like — seniority, tech stack, location, industry. The more detail you give,
-                    the better the matches.
-                </p>
-            </div>
-            <form
-                onSubmit={handleSubmit}
-                className="bg-surface rounded-2xl border border-border shadow-sm p-4 space-y-3"
-            >
-                <p className="text-sm font-semibold text-muted-strong">Job Search</p>
-                <textarea
-                    rows={2}
-                    value={criteria}
-                    onChange={(e) => setCriteria(e.target.value)}
-                    placeholder="e.g. Senior Python backend engineer, remote, fintech"
-                    className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                    disabled={state.isStreaming}
-                />
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 shrink-0 group relative">
-                        <label className="text-xs text-muted cursor-default">Score threshold</label>
-                        <span className="w-3.5 h-3.5 rounded-full bg-surface-alt text-muted text-[9px] font-bold flex items-center justify-center cursor-help leading-none">?</span>
-                        <div className="absolute bottom-full left-0 mb-2 w-56 rounded-lg bg-foreground text-background text-xs px-3 py-2 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
-                            Minimum match score (0–1) a job must reach to be shortlisted. Higher = stricter, fewer but better matches. Lower = more results but less precise.
-                            <div className="absolute top-full left-4 border-4 border-transparent border-t-foreground"/>
-                        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+            {/* Sidebar: CV upload + search form */}
+            <aside className="lg:sticky lg:top-8 space-y-5">
+                {/* CV upload */}
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="w-5 h-5 rounded-full bg-accent text-accent-contrast text-xs font-bold flex items-center justify-center shrink-0">1</span>
+                        <p className="text-sm font-semibold text-muted-strong">Upload your CV</p>
                     </div>
-                    <input
-                        type="number"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={threshold}
-                        onChange={(e) => setThreshold(e.target.value)}
-                        className="w-16 rounded-lg border border-border px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-ring"
+                    <p className="text-xs text-muted pl-7">
+                        Upload your resume as a PDF. It will be parsed and embedded so the AI can match your skills against
+                        job listings.
+                    </p>
+                </div>
+                <CvUploadPanel status={cvStatus} upload={cvUpload}/>
+
+                {/* Search form */}
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="w-5 h-5 rounded-full bg-accent text-accent-contrast text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                        <p className="text-sm font-semibold text-muted-strong">Describe the role you&apos;re looking for</p>
+                    </div>
+                    <p className="text-xs text-muted pl-7">
+                        Be as specific as you like — seniority, tech stack, location, industry. The more detail you give,
+                        the better the matches.
+                    </p>
+                </div>
+                <form
+                    onSubmit={handleSubmit}
+                    className="bg-surface rounded-2xl border border-border shadow-sm p-4 space-y-3"
+                >
+                    <p className="text-sm font-semibold text-muted-strong">Job Search</p>
+                    <textarea
+                        rows={2}
+                        value={criteria}
+                        onChange={(e) => setCriteria(e.target.value)}
+                        placeholder="e.g. Senior Python backend engineer, remote, fintech"
+                        className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                         disabled={state.isStreaming}
                     />
-                    <div className="flex gap-2 ml-auto">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 shrink-0 group relative">
+                            <label className="text-xs text-muted cursor-default">Score threshold</label>
+                            <span className="w-3.5 h-3.5 rounded-full bg-surface-alt text-muted text-[9px] font-bold flex items-center justify-center cursor-help leading-none">?</span>
+                            <div className="absolute bottom-full left-0 mb-2 w-56 rounded-lg bg-foreground text-background text-xs px-3 py-2 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                                Minimum match score (0–1) a job must reach to be shortlisted. Higher = stricter, fewer but better matches. Lower = more results but less precise.
+                                <div className="absolute top-full left-4 border-4 border-transparent border-t-foreground"/>
+                            </div>
+                        </div>
+                        <input
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={threshold}
+                            onChange={(e) => setThreshold(e.target.value)}
+                            className="w-16 rounded-lg border border-border px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-ring"
+                            disabled={state.isStreaming}
+                        />
+                    </div>
+                    <div className="flex gap-2">
                         {hasActivity && (
                             <button
                                 type="button"
@@ -553,10 +556,10 @@ export default function DashboardPage() {
                         <button
                             type="submit"
                             disabled={state.isStreaming || !criteria.trim() || !hasCv}
-                            className="rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {state.isStreaming ? (
-                                <span className="flex items-center gap-2">
+                                <span className="flex items-center justify-center gap-2">
                   <span className="w-3 h-3 rounded-full border-2 border-accent-contrast border-t-transparent animate-spin"/>
                   Running…
                 </span>
@@ -565,65 +568,68 @@ export default function DashboardPage() {
                             )}
                         </button>
                     </div>
-                </div>
-                {!hasCv && criteria.trim() && cvStatus.type !== "checking" && (
-                    <p className="flex items-center gap-1.5 text-xs text-warning bg-warning-soft border border-warning rounded-lg px-3 py-2">
-                        <span>⚠</span>
-                        {cvStatus.type === "processing"
-                            ? "Your CV is still being processed — Search will unlock once embedding is complete."
-                            : "Please upload your CV first — the agents need it to score how well each job matches your experience."}
-                    </p>
-                )}
-            </form>
+                    {!hasCv && criteria.trim() && cvStatus.type !== "checking" && (
+                        <p className="flex items-center gap-1.5 text-xs text-warning bg-warning-soft border border-warning rounded-lg px-3 py-2">
+                            <span>⚠</span>
+                            {cvStatus.type === "processing"
+                                ? "Your CV is still being processed — Search will unlock once embedding is complete."
+                                : "Please upload your CV first — the agents need it to score how well each job matches your experience."}
+                        </p>
+                    )}
+                </form>
 
-            {/* Global error */}
-            {state.error && (
-                <div className="rounded-xl bg-danger-soft border border-danger px-4 py-3 text-sm text-danger">
-                    {state.error}
-                </div>
-            )}
-
-            {/* Conversation feed */}
-            {hasActivity && (
-                <div ref={feedRef} className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
-                    {state.messages.map((msg) => (
-                        <AgentMessage
-                            key={msg.id}
-                            message={msg}
-                            config={AGENT_CONFIGS[msg.node]}
-                        />
-                    ))}
-                    <ResultsPanel result={state.finalResult}/>
-                </div>
-            )}
-
-            {/* Empty state */}
-            {!hasActivity && !state.error && (
-                <div className="text-center py-10 text-sm space-y-3">
-                    <div className="flex justify-center gap-4 mb-2">
-                        {EMPTY_STATE_NODES.map((node) => (
-                            <div
-                                key={node}
-                                className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-border"
-                            >
-                                <Image
-                                    src={AGENT_CONFIGS[node].avatarSrc}
-                                    alt={AGENT_CONFIGS[node].label}
-                                    fill
-                                    className="object-cover"
-                                    sizes="56px"
-                                />
-                            </div>
-                        ))}
+                {/* Global error */}
+                {state.error && (
+                    <div className="rounded-xl bg-danger-soft border border-danger px-4 py-3 text-sm text-danger">
+                        {state.error}
                     </div>
-                    <p className="font-medium text-muted-strong">Your agent team is ready.</p>
-                    <p className="text-muted max-w-sm mx-auto leading-relaxed">
-                        Scout uncovers the best matching opportunities, Orchestrator ranks them against your experience
-                        and goals, and Tailor crafts personalised insights for every match so you can apply with
-                        confidence.
-                    </p>
-                </div>
-            )}
+                )}
+            </aside>
+
+            {/* Main column: agent activity feed */}
+            <div className="min-w-0">
+                {/* Conversation feed */}
+                {hasActivity && (
+                    <div ref={feedRef} className="space-y-5 max-h-[60vh] lg:h-[calc(100vh-9rem)] overflow-y-auto pr-1">
+                        {state.messages.map((msg) => (
+                            <AgentMessage
+                                key={msg.id}
+                                message={msg}
+                                config={AGENT_CONFIGS[msg.node]}
+                            />
+                        ))}
+                        <ResultsPanel result={state.finalResult}/>
+                    </div>
+                )}
+
+                {/* Empty state */}
+                {!hasActivity && !state.error && (
+                    <div className="text-center py-10 text-sm space-y-3">
+                        <div className="flex justify-center gap-4 mb-2">
+                            {EMPTY_STATE_NODES.map((node) => (
+                                <div
+                                    key={node}
+                                    className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-border"
+                                >
+                                    <Image
+                                        src={AGENT_CONFIGS[node].avatarSrc}
+                                        alt={AGENT_CONFIGS[node].label}
+                                        fill
+                                        className="object-cover"
+                                        sizes="56px"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <p className="font-medium text-muted-strong">Your agent team is ready.</p>
+                        <p className="text-muted max-w-sm mx-auto leading-relaxed">
+                            Scout uncovers the best matching opportunities, Orchestrator ranks them against your experience
+                            and goals, and Tailor crafts personalised insights for every match so you can apply with
+                            confidence.
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
