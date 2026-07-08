@@ -98,9 +98,9 @@ export default function CVUploadPage() {
   }
 
   return (
-    <div className="max-w-xl space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Upload CV</h2>
-      <p className="text-sm text-gray-500">
+    <div className="max-w-3xl space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Upload CV</h2>
+      <p className="text-sm text-muted">
         Upload your CV as a PDF. It will be parsed and embedded for semantic
         job matching.
       </p>
@@ -118,15 +118,15 @@ export default function CVUploadPage() {
         onDrop={handleDrop}
         className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-8 py-12 cursor-pointer transition select-none ${
           dragging
-            ? "border-green-400 bg-green-50"
-            : "border-indigo-300 bg-indigo-50 hover:bg-indigo-100"
+            ? "border-success bg-success-soft"
+            : "border-accent bg-accent-soft hover:bg-accent-soft/70"
         }`}
       >
         <span className="text-4xl">📄</span>
-        <p className="text-sm font-medium text-gray-700">
+        <p className="text-sm font-medium text-muted-strong">
           Drag & drop your CV here, or click to browse
         </p>
-        <p className="text-xs text-gray-400">.pdf only · max 10 MB</p>
+        <p className="text-xs text-muted">.pdf only · max 10 MB</p>
       </div>
 
       <input
@@ -142,22 +142,22 @@ export default function CVUploadPage() {
       />
 
       {status.type === "uploading" && (
-        <div className="flex items-center gap-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
+        <div className="flex items-center gap-3 rounded-lg bg-accent-soft px-4 py-3 text-sm text-accent-text">
           <span className="animate-spin">⏳</span> Uploading…
         </div>
       )}
       {status.type === "processing" && (
-        <div className="flex items-center gap-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
+        <div className="flex items-center gap-3 rounded-lg bg-accent-soft px-4 py-3 text-sm text-accent-text">
           <span className="animate-spin">⏳</span> Processing CV — reading and embedding your resume…
         </div>
       )}
       {status.type === "success" && (
-        <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-lg bg-success-soft border border-success px-4 py-3 text-sm text-success">
           ✅ CV uploaded and embedded successfully.
         </div>
       )}
       {status.type === "error" && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg bg-danger-soft border border-danger px-4 py-3 text-sm text-danger">
           ❌ {status.message}
         </div>
       )}

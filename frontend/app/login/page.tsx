@@ -39,24 +39,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2] px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-10">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: "var(--gradient-auth)" }}
+    >
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-10">
+        <h1 className="text-3xl font-bold text-center text-foreground mb-2">
           AgenticHire AI
         </h1>
-        <p className="text-center text-gray-500 mb-8 text-sm">
+        <p className="text-center text-muted mb-8 text-sm">
           Sign in to your account
         </p>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-lg bg-danger-soft border border-danger px-4 py-3 text-sm text-danger">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-muted-strong mb-1">
               Email
             </label>
             <input
@@ -65,11 +68,11 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-muted-strong mb-1">
               Password
             </label>
             <input
@@ -78,23 +81,23 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-accent py-2.5 text-sm font-semibold text-accent-contrast transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="font-semibold text-indigo-600 hover:underline"
+            className="font-semibold text-accent hover:underline"
           >
             Sign up
           </Link>

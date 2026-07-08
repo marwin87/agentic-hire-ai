@@ -11,6 +11,7 @@ import {
     OrchestrateResponse,
 } from "@/lib/workflow-types";
 import {AGENT_CONFIGS, AgentConfig} from "@/lib/agent-config";
+import {scoreBadgeClasses} from "@/lib/score-badge";
 
 // ── CV upload hook ────────────────────────────────────────────────────────────
 
@@ -133,26 +134,26 @@ function CvUploadPanel({
     const isProcessing = status.type === "processing";
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
-            <p className="text-sm font-semibold text-gray-700">CV / Resume</p>
+        <div className="bg-surface rounded-2xl border border-border shadow-sm p-4 space-y-3">
+            <p className="text-sm font-semibold text-muted-strong">CV / Resume</p>
 
             {isChecking ? (
-                <div className="flex items-center gap-2 px-6 py-4 text-sm text-gray-400">
-                    <span className="w-4 h-4 rounded-full border-2 border-gray-300 border-t-transparent animate-spin"/>
+                <div className="flex items-center gap-2 px-6 py-4 text-sm text-muted">
+                    <span className="w-4 h-4 rounded-full border-2 border-border border-t-transparent animate-spin"/>
                     Checking…
                 </div>
             ) : isProcessing ? (
                 <div className="flex items-center gap-3 px-3 py-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center text-xl shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-accent-soft border border-accent flex items-center justify-center text-xl shrink-0">
                         💻
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 truncate">
+                        <p className="text-sm font-medium text-muted-strong truncate">
                             {(status as { type: "processing"; filename: string }).filename}
                         </p>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="w-3 h-3 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin shrink-0"/>
-                            <span className="text-xs text-indigo-600">Reading and embedding your CV…</span>
+                            <span className="w-3 h-3 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0"/>
+                            <span className="text-xs text-accent">Reading and embedding your CV…</span>
                         </div>
                     </div>
                 </div>
@@ -170,33 +171,33 @@ function CvUploadPanel({
                     onDrop={handleDrop}
                     className={`flex items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-4 cursor-pointer transition select-none text-sm ${
                         dragging
-                            ? "border-green-400 bg-green-50 text-green-700"
+                            ? "border-success bg-success-soft text-success"
                             : status.type === "uploading"
-                                ? "border-indigo-200 bg-indigo-50 text-indigo-500 cursor-wait"
-                                : "border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500"
+                                ? "border-accent bg-accent-soft text-accent cursor-wait"
+                                : "border-border bg-surface-alt hover:bg-surface-alt/70 text-muted"
                     }`}
                 >
                     {status.type === "uploading" ? (
                         <>
-                            <span className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin"/>
+                            <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin"/>
                             Uploading…
                         </>
                     ) : (
                         <>
                             <span className="text-lg">📄</span>
-                            <span>Drop your PDF here, or <span className="text-indigo-600 font-medium">browse</span></span>
-                            <span className="text-xs text-gray-400">· max 10 MB</span>
+                            <span>Drop your PDF here, or <span className="text-accent font-medium">browse</span></span>
+                            <span className="text-xs text-muted">· max 10 MB</span>
                         </>
                     )}
                 </div>
             ) : (
                 <div className="flex flex-col items-start gap-2">
-                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <span className="text-green-600 font-medium flex items-center gap-1"><span>✓</span>{(status as { type: "success"; filename: string }).filename}</span>
+                    <p className="text-xs text-muted flex items-center gap-1">
+                        <span className="text-success font-medium flex items-center gap-1"><span>✓</span>{(status as { type: "success"; filename: string }).filename}</span>
                     </p>
                     <button
                         onClick={() => inputRef.current?.click()}
-                        className="rounded-xl px-4 py-2 text-sm border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+                        className="rounded-xl px-4 py-2 text-sm border border-border text-muted hover:bg-surface-alt transition"
                     >
                         Replace CV
                     </button>
@@ -204,7 +205,7 @@ function CvUploadPanel({
             )}
 
             {status.type === "error" && (
-                <p className="text-xs text-red-600">{status.message}</p>
+                <p className="text-xs text-danger">{status.message}</p>
             )}
 
             <input
@@ -246,8 +247,8 @@ function Avatar({config, pulse}: { config: AgentConfig; pulse?: boolean }) {
         <div
             className={`relative w-14 h-14 rounded-full shrink-0 overflow-hidden ${
                 pulse
-                    ? "ring-2 ring-offset-2 ring-indigo-400 animate-pulse"
-                    : "ring-1 ring-gray-200"
+                    ? "ring-2 ring-offset-2 ring-ring animate-pulse"
+                    : "ring-1 ring-border"
             }`}
         >
             <Image
@@ -269,7 +270,7 @@ function ThinkingDots() {
       {[0, 150, 300].map((delay) => (
           <span
               key={delay}
-              className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"
+              className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce"
               style={{animationDelay: `${delay}ms`}}
           />
       ))}
@@ -292,17 +293,17 @@ function AgentMessage({message, config}: { message: AgentMessageData; config: Ag
                 right ? "rounded-2xl rounded-tr-sm" : "rounded-2xl rounded-tl-sm"
             } ${
                 isRunning
-                    ? "bg-gray-100 border border-gray-200 text-gray-500"
+                    ? "bg-surface-alt border border-border text-muted"
                     : isError
-                        ? "bg-red-50 border border-red-200 text-red-700"
+                        ? "bg-danger-soft border border-danger text-danger"
                         : right
-                            ? "bg-sky-50 border border-sky-100 shadow-sm text-sky-900"
-                            : "bg-white border border-gray-200 shadow-sm text-gray-800"
+                            ? "bg-info-soft border border-info shadow-sm text-info"
+                            : "bg-surface border border-border shadow-sm text-muted-strong"
             }`}
         >
             {/* Live log lines */}
             {message.logs.length > 0 && (
-                <div className="space-y-0.5 mb-2 font-mono text-xs text-gray-600">
+                <div className="space-y-0.5 mb-2 font-mono text-xs text-muted-strong">
                     {message.logs.map((line, i) => (
                         <p key={i}>{line}</p>
                     ))}
@@ -312,7 +313,7 @@ function AgentMessage({message, config}: { message: AgentMessageData; config: Ag
             {isRunning && message.logs.length === 0 && (
                 <span className="flex items-center gap-3">
                     <ThinkingDots/>
-                    <span className="text-gray-400 text-xs">Working…</span>
+                    <span className="text-muted text-xs">Working…</span>
                 </span>
             )}
             {/* Running indicator after logs appear */}
@@ -329,7 +330,7 @@ function AgentMessage({message, config}: { message: AgentMessageData; config: Ag
             )}
             {isComplete && (
                 <span className="flex items-center gap-2 mt-1 text-xs font-medium">
-                    <span className="text-green-500">✓</span>
+                    <span className="text-success">✓</span>
                     <span>{formatSummary(message.node, message.summary)}</span>
                 </span>
             )}
@@ -344,8 +345,8 @@ function AgentMessage({message, config}: { message: AgentMessageData; config: Ag
             <Avatar config={config} pulse={isRunning}/>
             <div className={`flex-1 min-w-0 ${right ? "flex flex-col items-end" : ""}`}>
                 <div className={`flex items-baseline gap-2 mb-1.5 ${right ? "flex-row-reverse" : ""}`}>
-                    <span className="text-sm font-semibold text-gray-800">{label}</span>
-                    <span className="text-xs text-gray-400">{config.role}</span>
+                    <span className="text-sm font-semibold text-muted-strong">{label}</span>
+                    <span className="text-xs text-muted">{config.role}</span>
                 </div>
                 {bubble}
             </div>
@@ -357,27 +358,21 @@ function AgentMessage({message, config}: { message: AgentMessageData; config: Ag
 
 function JobCard({job}: { job: OrchestrateJobResult }) {
     const pct = Math.round(job.match_score * 100);
-    const scoreColor =
-        pct >= 80
-            ? "bg-green-100 text-green-700"
-            : pct >= 60
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-gray-100 text-gray-500";
 
     return (
         <div
-            className="rounded-xl border border-gray-200 bg-white p-4 space-y-2 shadow-sm hover:shadow-md transition-shadow">
+            className="rounded-xl border border-border bg-surface p-4 space-y-2 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <p className="font-semibold text-gray-900 text-sm leading-tight">{job.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{job.company}</p>
+                    <p className="font-semibold text-foreground text-sm leading-tight">{job.title}</p>
+                    <p className="text-xs text-muted mt-0.5">{job.company}</p>
                 </div>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${scoreColor}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${scoreBadgeClasses(pct)}`}>
           {pct}%
         </span>
             </div>
             {job.evaluation && (
-                <p className="text-xs text-gray-600 leading-relaxed border-t border-gray-100 pt-2">
+                <p className="text-xs text-muted-strong leading-relaxed border-t border-border pt-2">
                     {job.evaluation}
                 </p>
             )}
@@ -385,7 +380,7 @@ function JobCard({job}: { job: OrchestrateJobResult }) {
                 href={job.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 transition-colors"
+                className="text-xs text-accent hover:text-accent-hover hover:underline inline-flex items-center gap-1 transition-colors"
             >
                 View posting <span aria-hidden>→</span>
             </a>
@@ -406,20 +401,20 @@ function ResultsPanel({result}: { result: OrchestrateResponse | null }) {
             style={{animation: "fadeSlideIn 0.4s ease-out both"}}
         >
             <div
-                className="w-11 h-11 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0 ring-1 ring-indigo-200">
+                className="w-11 h-11 rounded-full bg-accent flex items-center justify-center text-accent-contrast text-xs font-bold shrink-0 ring-1 ring-ring">
                 AI
             </div>
             <div className="flex-1 min-w-0 space-y-3">
                 <div className="flex items-baseline gap-2 mb-1.5">
-                    <span className="text-sm font-semibold text-gray-800">AgenticHire</span>
-                    <span className="text-xs text-gray-400">Pipeline complete</span>
+                    <span className="text-sm font-semibold text-muted-strong">AgenticHire</span>
+                    <span className="text-xs text-muted">Pipeline complete</span>
                 </div>
                 <div
-                    className="inline-block rounded-2xl rounded-tl-sm px-4 py-3 text-sm bg-indigo-50 border border-indigo-100 shadow-sm text-indigo-800">
+                    className="inline-block rounded-2xl rounded-tl-sm px-4 py-3 text-sm bg-accent-soft border border-accent shadow-sm text-accent-text">
                     Done! Found{" "}
                     <strong>{sorted.length} matching position{sorted.length !== 1 ? "s" : ""}</strong>
                     {result.rejected_jobs.length > 0 && (
-                        <span className="text-indigo-500"> ({result.rejected_jobs.length} below threshold)</span>
+                        <span className="text-accent"> ({result.rejected_jobs.length} below threshold)</span>
                     )}.
                 </div>
                 {sorted.length > 0 && (
@@ -428,7 +423,7 @@ function ResultsPanel({result}: { result: OrchestrateResponse | null }) {
                     </div>
                 )}
                 {sorted.length === 0 && (
-                    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
+                    <div className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted">
                         No jobs met the score threshold. Try lowering it or broadening your criteria.
                     </div>
                 )}
@@ -476,15 +471,15 @@ export default function DashboardPage() {
     const hasActivity = state.messages.length > 0;
 
     return (
-        <div className="flex flex-col gap-5 max-w-2xl mx-auto">
+        <div className="flex flex-col gap-5 max-w-4xl mx-auto">
             {/* CV upload */}
             <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                     <span
-                        className="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
-                    <p className="text-sm font-semibold text-gray-800">Upload your CV</p>
+                        className="w-5 h-5 rounded-full bg-accent text-accent-contrast text-xs font-bold flex items-center justify-center shrink-0">1</span>
+                    <p className="text-sm font-semibold text-muted-strong">Upload your CV</p>
                 </div>
-                <p className="text-xs text-gray-500 pl-7">
+                <p className="text-xs text-muted pl-7">
                     Upload your resume as a PDF. It will be parsed and embedded so the AI can match your skills against
                     job listings.
                 </p>
@@ -495,34 +490,34 @@ export default function DashboardPage() {
             <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                     <span
-                        className="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
-                    <p className="text-sm font-semibold text-gray-800">Describe the role you&apos;re looking for</p>
+                        className="w-5 h-5 rounded-full bg-accent text-accent-contrast text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                    <p className="text-sm font-semibold text-muted-strong">Describe the role you&apos;re looking for</p>
                 </div>
-                <p className="text-xs text-gray-500 pl-7">
+                <p className="text-xs text-muted pl-7">
                     Be as specific as you like — seniority, tech stack, location, industry. The more detail you give,
                     the better the matches.
                 </p>
             </div>
             <form
                 onSubmit={handleSubmit}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3"
+                className="bg-surface rounded-2xl border border-border shadow-sm p-4 space-y-3"
             >
-                <p className="text-sm font-semibold text-gray-700">Job Search</p>
+                <p className="text-sm font-semibold text-muted-strong">Job Search</p>
                 <textarea
                     rows={2}
                     value={criteria}
                     onChange={(e) => setCriteria(e.target.value)}
                     placeholder="e.g. Senior Python backend engineer, remote, fintech"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                    className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                     disabled={state.isStreaming}
                 />
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1 shrink-0 group relative">
-                        <label className="text-xs text-gray-500 cursor-default">Score threshold</label>
-                        <span className="w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold flex items-center justify-center cursor-help leading-none">?</span>
-                        <div className="absolute bottom-full left-0 mb-2 w-56 rounded-lg bg-gray-900 text-white text-xs px-3 py-2 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                        <label className="text-xs text-muted cursor-default">Score threshold</label>
+                        <span className="w-3.5 h-3.5 rounded-full bg-surface-alt text-muted text-[9px] font-bold flex items-center justify-center cursor-help leading-none">?</span>
+                        <div className="absolute bottom-full left-0 mb-2 w-56 rounded-lg bg-foreground text-background text-xs px-3 py-2 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
                             Minimum match score (0–1) a job must reach to be shortlisted. Higher = stricter, fewer but better matches. Lower = more results but less precise.
-                            <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900"/>
+                            <div className="absolute top-full left-4 border-4 border-transparent border-t-foreground"/>
                         </div>
                     </div>
                     <input
@@ -532,7 +527,7 @@ export default function DashboardPage() {
                         step="0.05"
                         value={threshold}
                         onChange={(e) => setThreshold(e.target.value)}
-                        className="w-16 rounded-lg border border-gray-200 px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="w-16 rounded-lg border border-border px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-ring"
                         disabled={state.isStreaming}
                     />
                     <div className="flex gap-2 ml-auto">
@@ -541,7 +536,7 @@ export default function DashboardPage() {
                                 type="button"
                                 onClick={clearResults}
                                 disabled={state.isStreaming}
-                                className="rounded-xl px-4 py-2 text-sm border border-gray-200 text-gray-500 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="rounded-xl px-4 py-2 text-sm border border-border text-muted hover:bg-surface-alt transition disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 Clear
                             </button>
@@ -550,7 +545,7 @@ export default function DashboardPage() {
                             <button
                                 type="button"
                                 onClick={abortWorkflow}
-                                className="rounded-xl px-4 py-2 text-sm border border-red-200 text-red-600 hover:bg-red-50 transition"
+                                className="rounded-xl px-4 py-2 text-sm border border-danger text-danger hover:bg-danger-soft transition"
                             >
                                 Stop
                             </button>
@@ -558,11 +553,11 @@ export default function DashboardPage() {
                         <button
                             type="submit"
                             disabled={state.isStreaming || !criteria.trim() || !hasCv}
-                            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-accent-contrast hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {state.isStreaming ? (
                                 <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin"/>
+                  <span className="w-3 h-3 rounded-full border-2 border-accent-contrast border-t-transparent animate-spin"/>
                   Running…
                 </span>
                             ) : (
@@ -572,7 +567,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
                 {!hasCv && criteria.trim() && cvStatus.type !== "checking" && (
-                    <p className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <p className="flex items-center gap-1.5 text-xs text-warning bg-warning-soft border border-warning rounded-lg px-3 py-2">
                         <span>⚠</span>
                         {cvStatus.type === "processing"
                             ? "Your CV is still being processed — Search will unlock once embedding is complete."
@@ -583,7 +578,7 @@ export default function DashboardPage() {
 
             {/* Global error */}
             {state.error && (
-                <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl bg-danger-soft border border-danger px-4 py-3 text-sm text-danger">
                     {state.error}
                 </div>
             )}
@@ -609,7 +604,7 @@ export default function DashboardPage() {
                         {EMPTY_STATE_NODES.map((node) => (
                             <div
                                 key={node}
-                                className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-gray-200"
+                                className="relative w-14 h-14 rounded-full overflow-hidden ring-1 ring-border"
                             >
                                 <Image
                                     src={AGENT_CONFIGS[node].avatarSrc}
@@ -621,8 +616,8 @@ export default function DashboardPage() {
                             </div>
                         ))}
                     </div>
-                    <p className="font-medium text-gray-700">Your agent team is ready.</p>
-                    <p className="text-gray-500 max-w-sm mx-auto leading-relaxed">
+                    <p className="font-medium text-muted-strong">Your agent team is ready.</p>
+                    <p className="text-muted max-w-sm mx-auto leading-relaxed">
                         Scout uncovers the best matching opportunities, Orchestrator ranks them against your experience
                         and goals, and Tailor crafts personalised insights for every match so you can apply with
                         confidence.

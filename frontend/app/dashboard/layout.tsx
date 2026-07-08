@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
 import NavLinks from "@/components/NavLinks";
+import ThemeToggle from "@/components/ThemeToggle";
 import { WorkflowStateProvider } from "@/context/workflow-state";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/api";
 
@@ -31,17 +32,20 @@ export default async function DashboardLayout({
 
   return (
     <WorkflowStateProvider>
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div className="min-h-screen bg-surface-alt">
+        <nav className="bg-surface border-b border-border px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-indigo-700">
+            <span className="text-lg font-bold text-accent">
               AgenticHire AI
             </span>
             <NavLinks />
           </div>
-          <LogoutButton email={email} />
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <LogoutButton email={email} />
+          </div>
         </nav>
-        <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
+        <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
       </div>
     </WorkflowStateProvider>
   );

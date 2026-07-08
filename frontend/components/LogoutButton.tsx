@@ -18,7 +18,7 @@ export default function LogoutButton({ email }: { email?: string }) {
     <button
       onClick={handleLogout}
       disabled={loading}
-      className="text-sm text-gray-500 hover:text-red-600 transition disabled:opacity-60"
+      className="text-sm text-muted hover:text-danger transition disabled:opacity-60"
     >
       {loading ? "Signing out…" : email ? `Sign Out (${email})` : "Sign Out"}
     </button>
