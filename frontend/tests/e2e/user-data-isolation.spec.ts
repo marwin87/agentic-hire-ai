@@ -114,7 +114,7 @@ test.describe("user data isolation — jobs and CV surfaces", () => {
     expect(response.status()).toBe(200);
 
     // Business outcome: upload drop zone visible — not User A's CV filename
-    await expect(page.getByText(/drop your pdf here/i)).toBeVisible();
+    await expect(page.getByText(/drop your cv here/i)).toBeVisible();
     await ctx.close();
   });
 });

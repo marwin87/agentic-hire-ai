@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  ALLOWED_CV_ACCEPT,
+  ALLOWED_CV_MIME_TYPES,
+  CV_TYPE_ERROR_MESSAGE,
+} from "@/lib/cv-upload";
 
 type UploadStatus =
   | { type: "idle" }
@@ -48,8 +53,8 @@ export default function CVUploadPage() {
   }
 
   async function uploadFile(file: File) {
-    if (file.type !== "application/pdf") {
-      setStatus({ type: "error", message: "Only PDF files are accepted." });
+    if (!ALLOWED_CV_MIME_TYPES.includes(file.type)) {
+      setStatus({ type: "error", message: CV_TYPE_ERROR_MESSAGE });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -101,8 +106,8 @@ export default function CVUploadPage() {
     <div className="max-w-3xl space-y-6">
       <h2 className="text-2xl font-bold text-foreground">Upload CV</h2>
       <p className="text-sm text-muted">
-        Upload your CV as a PDF. It will be parsed and embedded for semantic
-        job matching.
+        Upload your CV as a PDF or DOCX. It will be parsed and embedded for
+        semantic job matching.
       </p>
 
       <div
@@ -126,13 +131,13 @@ export default function CVUploadPage() {
         <p className="text-sm font-medium text-muted-strong">
           Drag & drop your CV here, or click to browse
         </p>
-        <p className="text-xs text-muted">.pdf only · max 10 MB</p>
+        <p className="text-xs text-muted">.pdf, .docx · max 10 MB</p>
       </div>
 
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf"
+        accept={ALLOWED_CV_ACCEPT}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

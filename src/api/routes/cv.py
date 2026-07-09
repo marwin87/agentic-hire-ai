@@ -2,10 +2,12 @@
 
 import hashlib
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
 
+from docx import Document as DocxDocument
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Depends
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loguru import logger
@@ -24,6 +26,10 @@ router = APIRouter(prefix="/api", tags=["cv"])
 
 CV_UPLOAD_DIR = "data/cv"
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_CONTENT_TYPES: dict[str, str] = {
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+}
 
 
 async def calculate_file_hash(content: bytes) -> str:
@@ -117,22 +123,38 @@ async def upload_cv(
         HTTPException: 400 for invalid file, 401 for auth failure
     """
     # Validate file type
-    if file.content_type != "application/pdf":
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
         logger.warning(f"Upload attempt with invalid file type: {file.content_type}")
         raise HTTPException(
             status_code=400,
-            detail="Invalid file type. Only PDF files are allowed.",
+            detail="Invalid file type. Only PDF and DOCX files are allowed.",
         )
 
     # Read and validate file size
     content = await file.read()
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="File is empty")
-    # Validate magic bytes — content_type is client-supplied and trivially spoofed
-    if not content.startswith(b"%PDF"):
-        raise HTTPException(
-            status_code=400, detail="Invalid file. Only PDF files are allowed."
-        )
+    # Validate content matches the claimed type — content_type is
+    # client-supplied and trivially spoofed. PDF: magic bytes. DOCX: zip
+    # signature is not enough on its own (shared with xlsx/pptx/odt), so
+    # also attempt a structural open with python-docx.
+    extension = ALLOWED_CONTENT_TYPES[file.content_type]
+    if extension == ".pdf":
+        if not content.startswith(b"%PDF"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file. Only PDF and DOCX files are allowed.",
+            )
+    else:
+        try:
+            if not content.startswith(b"PK\x03\x04"):
+                raise ValueError("not a zip-based Office document")
+            DocxDocument(BytesIO(content))
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file. Only PDF and DOCX files are allowed.",
+            )
     if len(content) > MAX_FILE_SIZE:
         user_id_val = cast(UUID, user.id)
         logger.warning(
@@ -150,7 +172,7 @@ async def upload_cv(
 
     # Generate deterministic filename with timestamp
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"resume_{timestamp}.pdf"
+    filename = f"resume_{timestamp}{extension}"
     filepath = user_cv_dir / filename
 
     # Write file to disk

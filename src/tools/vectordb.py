@@ -16,6 +16,8 @@ except ImportError:
     print("❌ ERROR: Missing dependencies. Run: pip install pdf2image pillow")
     raise
 
+from docx import Document as DocxDocument
+from docx.opc.exceptions import PackageNotFoundError
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.documents import Document
 from langchain_text_splitters import (
@@ -30,6 +32,8 @@ from src.db.repositories import CVEmbeddingRepository, CVFileRepository
 from src.db.models import CVEmbedding
 from src.db.database import get_session_factory
 from src.config.settings import config
+
+MIN_DOCX_TEXT_LENGTH = 100
 
 
 class CVDetectionResult(BaseModel):
@@ -104,6 +108,43 @@ class CVVectorManager:
     def _normalize_bullets(text: str) -> str:
         return re.sub(r"[•\-\*]", "\n•", text)
 
+    @staticmethod
+    def _docx_to_markdown(file_path: str) -> str:
+        """Convert a .docx file into the same Markdown shape the Vision-OCR
+        path produces, so it flows through the existing header-based chunking
+        unchanged.
+        """
+        document = DocxDocument(file_path)
+        lines: list[str] = []
+
+        for paragraph in document.paragraphs:
+            text = paragraph.text.strip()
+            if not text:
+                continue
+
+            style_name = paragraph.style.name if paragraph.style else ""
+            if style_name in ("Title", "Heading 1"):
+                lines.append(f"# {text}")
+            elif style_name == "Heading 2":
+                lines.append(f"## {text}")
+            elif style_name == "Heading 3":
+                lines.append(f"### {text}")
+            elif style_name.startswith("List"):
+                # paragraph.text omits the bullet glyph for native Word list
+                # styles (numPr numbering XML, not literal text runs) —
+                # reconstruct it here or list structure is silently dropped.
+                lines.append(f"• {text}")
+            else:
+                lines.append(text)
+
+        for table in document.tables:
+            for row in table.rows:
+                cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                if cells:
+                    lines.append(" | ".join(cells))
+
+        return "\n".join(lines)
+
     def _detect_if_cv(self, b64_img: str) -> None:
         """Raises ValueError if the first page does not appear to be a CV/resume."""
         detector = self.vision_model.with_structured_output(CVDetectionResult)
@@ -121,6 +162,22 @@ class CVVectorManager:
                     },
                 },
             ]
+        )
+        result: CVDetectionResult = detector.invoke([human_msg])
+        if not result.is_cv:
+            raise ValueError(result.reason)
+
+    def _detect_if_cv_from_text(self, text: str) -> None:
+        """Text-only sibling of `_detect_if_cv` for the docx path, which never
+        produces a page image. Raises ValueError if the text does not appear
+        to be a CV/resume.
+        """
+        detector = self.vision_model.with_structured_output(CVDetectionResult)
+        human_msg = HumanMessage(
+            content=(
+                "Examine this document text. Is it a CV or resume? Describe "
+                f"what you see.\n\n{text[:2000]}"
+            )
         )
         result: CVDetectionResult = detector.invoke([human_msg])
         if not result.is_cv:
@@ -182,6 +239,26 @@ class CVVectorManager:
             with open(self.cv_text_cache_path, "r") as f:
                 full_text = f.read()
             logger.info(f"[VECTOR_DB] Text loaded from cache ({len(full_text)} chars)")
+        elif os.path.splitext(file_path)[1].lower() == ".docx":
+            logger.info("[VECTOR_DB] Reading CV via docx text extraction...")
+            try:
+                full_text = self._docx_to_markdown(file_path)
+            except PackageNotFoundError as e:
+                raise ValueError("This DOCX file is invalid or corrupted.") from e
+
+            if len(full_text.strip()) < MIN_DOCX_TEXT_LENGTH:
+                raise ValueError(
+                    "This DOCX has no extractable text — try exporting as "
+                    "PDF instead."
+                )
+
+            logger.info("[VECTOR_DB] Verifying document is a CV...")
+            self._detect_if_cv_from_text(full_text)
+
+            full_text = self._normalize_bullets(full_text)
+
+            with open(self.cv_text_cache_path, "w") as f:
+                f.write(full_text)
         else:
             logger.info("[VECTOR_DB] Reading CV via Vision model...")
             base64_images = self._pdf_to_base64_images(file_path)

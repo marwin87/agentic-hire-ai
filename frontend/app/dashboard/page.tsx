@@ -12,6 +12,7 @@ import {
 } from "@/lib/workflow-types";
 import {AGENT_CONFIGS, AgentConfig} from "@/lib/agent-config";
 import {scoreBadgeClasses} from "@/lib/score-badge";
+import {ALLOWED_CV_ACCEPT, ALLOWED_CV_MIME_TYPES, CV_TYPE_ERROR_MESSAGE} from "@/lib/cv-upload";
 
 // ── CV upload hook ────────────────────────────────────────────────────────────
 
@@ -60,12 +61,12 @@ function useCvUpload() {
                 if (!data.has_cv) {
                     setStatus({type: "idle"});
                 } else if (data.ingestion_status === "completed") {
-                    setStatus({type: "success", filename: data.filename ?? "resume.pdf"});
+                    setStatus({type: "success", filename: data.filename ?? "resume"});
                 } else if (data.ingestion_status === "failed") {
                     setStatus({type: "idle"});
                 } else {
                     // still processing from a previous session
-                    const filename = data.filename ?? "resume.pdf";
+                    const filename = data.filename ?? "resume";
                     setStatus({type: "processing", filename});
                     startPolling(filename);
                 }
@@ -76,8 +77,8 @@ function useCvUpload() {
     }, []);
 
     async function upload(file: File) {
-        if (file.type !== "application/pdf") {
-            setStatus({type: "error", message: "Only PDF files are accepted."});
+        if (!ALLOWED_CV_MIME_TYPES.includes(file.type)) {
+            setStatus({type: "error", message: CV_TYPE_ERROR_MESSAGE});
             return;
         }
         if (file.size > 10 * 1024 * 1024) {
@@ -187,7 +188,7 @@ function CvUploadPanel({
                     ) : (
                         <>
                             <span className="text-lg">📄</span>
-                            <span>Drop your PDF here, or <span className="text-accent font-medium">browse</span></span>
+                            <span>Drop your CV here, or <span className="text-accent font-medium">browse</span></span>
                             <span className="text-xs text-muted">Max 10 MB</span>
                         </>
                     )}
@@ -214,7 +215,7 @@ function CvUploadPanel({
             <input
                 ref={inputRef}
                 type="file"
-                accept=".pdf"
+                accept={ALLOWED_CV_ACCEPT}
                 className="hidden"
                 onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -552,7 +553,7 @@ export default function DashboardPage() {
                         <p className="text-sm font-semibold text-muted-strong">Upload your CV</p>
                     </div>
                     <p className="text-xs text-muted pl-7">
-                        Upload your resume as a PDF. It will be parsed and embedded so the AI can match your skills against
+                        Upload your resume as a PDF or DOCX. It will be parsed and embedded so the AI can match your skills against
                         job listings.
                     </p>
                 </div>

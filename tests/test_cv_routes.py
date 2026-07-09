@@ -3,10 +3,12 @@
 import hashlib
 import pytest
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+from docx import Document as DocxDocument
 from fastapi import HTTPException
 
 from src.api.routes.cv import (
@@ -15,6 +17,19 @@ from src.api.routes.cv import (
     cv_status,
     upload_cv,
 )
+
+DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
+
+def _build_docx_bytes() -> bytes:
+    doc = DocxDocument()
+    doc.add_paragraph("Real CV content.")
+    buffer = BytesIO()
+    doc.save(buffer)
+    return buffer.getvalue()
+
 
 # ===== calculate_file_hash =====
 
@@ -255,3 +270,66 @@ async def test_upload_cv_success_queues_background_task(tmp_path: Path) -> None:
     assert result["status"] == "processing"
     assert "file_hash" in result
     background.add_task.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_upload_cv_valid_docx_queues_background_task(tmp_path: Path) -> None:
+    content = _build_docx_bytes()
+    user_id = uuid4()
+
+    db = AsyncMock()
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.delete = AsyncMock()
+    background = MagicMock()
+
+    with (
+        patch.object(Path, "mkdir"),
+        patch.object(Path, "write_bytes"),
+        patch(
+            "src.api.routes.cv.CVFileRepository.get_latest_by_user",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch("src.api.routes.cv.ChatOpenAI"),
+        patch("src.api.routes.cv.OpenAIEmbeddings"),
+        patch("src.api.routes.cv.CVVectorManager"),
+    ):
+        result = await upload_cv(
+            background_tasks=background,
+            file=_upload_file(content_type=DOCX_CONTENT_TYPE, content=content),
+            user=_user(uid=user_id),
+            db=db,
+        )
+
+    assert result["status"] == "processing"
+    background.add_task.assert_called_once()
+    saved_filepath = background.add_task.call_args.args[2]
+    assert saved_filepath.endswith(".docx")
+
+
+@pytest.mark.asyncio
+async def test_upload_cv_docx_corrupt_internal_structure_raises_400() -> None:
+    corrupt_content = b"PK\x03\x04" + b"not a real docx internal structure"
+    with pytest.raises(HTTPException) as exc:
+        await upload_cv(
+            background_tasks=MagicMock(),
+            file=_upload_file(content_type=DOCX_CONTENT_TYPE, content=corrupt_content),
+            user=_user(),
+            db=AsyncMock(),
+        )
+    assert exc.value.status_code == 400
+    assert "invalid" in exc.value.detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_upload_cv_docx_missing_zip_signature_raises_400() -> None:
+    with pytest.raises(HTTPException) as exc:
+        await upload_cv(
+            background_tasks=MagicMock(),
+            file=_upload_file(content_type=DOCX_CONTENT_TYPE, content=b"not a zip"),
+            user=_user(),
+            db=AsyncMock(),
+        )
+    assert exc.value.status_code == 400

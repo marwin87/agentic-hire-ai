@@ -496,24 +496,25 @@ change needed there.
 
 #### Automated
 
-- [ ] 2.1 `uv run pytest tests/test_cv_routes.py -v` passes (new docx
+- [x] 2.1 `uv run pytest tests/test_cv_routes.py -v` passes (new docx
   upload/rejection cases)
-- [ ] 2.2 `uv run mypy src/api/routes/cv.py` passes
-- [ ] 2.3 `uv run black --check src/api/routes/cv.py`
+- [x] 2.2 `uv run mypy src/api/routes/cv.py` passes
+- [x] 2.3 `uv run black --check src/api/routes/cv.py`
 
 ### Phase 3: Frontend widgets + end-to-end verification
 
 #### Automated
 
-- [ ] 3.1 `cd frontend && npm run lint` passes
-- [ ] 3.2 `cd frontend && npm run build` passes with no type errors
-- [ ] 3.3 `cd frontend && npx playwright test tests/e2e/user-data-isolation.spec.ts`
+- [x] 3.1 `cd frontend && npm run lint` passes (adapted: repo has no `lint`
+  script/ESLint config — ran `npm run type-check` instead, which passed)
+- [x] 3.2 `cd frontend && npm run build` passes with no type errors
+- [x] 3.3 `cd frontend && npx playwright test tests/e2e/user-data-isolation.spec.ts`
   passes
 
 #### Manual
 
-- [ ] 3.4 Real `.docx` CV upload via `/dashboard/cv` reaches `completed`
-- [ ] 3.5 Same `.docx` upload via dashboard-embedded panel works identically
-- [ ] 3.6 Orchestrator RAG lookup returns non-empty CV context afterward
-- [ ] 3.7 PDF upload through both widgets still works (regression check)
-- [ ] 3.8 Non-CV `.docx` upload surfaces a clear `ingestion_error`
+- [x] 3.4 Real `.docx` CV upload via `/dashboard/cv` reaches `completed`
+- [x] 3.5 Same `.docx` upload via dashboard-embedded panel works identically
+- [x] 3.6 Orchestrator RAG lookup returns non-empty CV context afterward
+- [x] 3.7 PDF upload through both widgets still works (regression check)
+- [x] 3.8 Non-CV `.docx` upload surfaces a clear `ingestion_error`
