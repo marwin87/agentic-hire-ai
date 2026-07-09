@@ -6,8 +6,10 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
+from zipfile import BadZipFile
 
 from docx import Document as DocxDocument
+from docx.opc.exceptions import PackageNotFoundError
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Depends
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loguru import logger
@@ -134,6 +136,18 @@ async def upload_cv(
     content = await file.read()
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="File is empty")
+    # Reject oversized uploads before any type-specific parsing — DOCX
+    # validation below unzips and parses XML, which must not run against
+    # arbitrarily large attacker-controlled content ahead of a size gate.
+    if len(content) > MAX_FILE_SIZE:
+        user_id_val = cast(UUID, user.id)
+        logger.warning(
+            f"Upload attempt with oversized file: {len(content)} bytes from user {user_id_val}"
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024:.0f}MB.",
+        )
     # Validate content matches the claimed type — content_type is
     # client-supplied and trivially spoofed. PDF: magic bytes. DOCX: zip
     # signature is not enough on its own (shared with xlsx/pptx/odt), so
@@ -150,20 +164,12 @@ async def upload_cv(
             if not content.startswith(b"PK\x03\x04"):
                 raise ValueError("not a zip-based Office document")
             DocxDocument(BytesIO(content))
-        except Exception:
+        except (ValueError, PackageNotFoundError, BadZipFile) as e:
+            logger.warning(f"Rejected invalid DOCX upload: {e}")
             raise HTTPException(
                 status_code=400,
                 detail="Invalid file. Only PDF and DOCX files are allowed.",
             )
-    if len(content) > MAX_FILE_SIZE:
-        user_id_val = cast(UUID, user.id)
-        logger.warning(
-            f"Upload attempt with oversized file: {len(content)} bytes from user {user_id_val}"
-        )
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024:.0f}MB.",
-        )
 
     # Create user CV directory
     user_id_val = cast(UUID, user.id)

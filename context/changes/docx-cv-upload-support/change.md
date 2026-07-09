@@ -1,7 +1,7 @@
 ---
 change_id: docx-cv-upload-support
 title: Add DOCX support to CV upload and ingestion
-status: implemented
+status: impl_reviewed
 created: 2026-07-09
 updated: 2026-07-09
 archived_at: null

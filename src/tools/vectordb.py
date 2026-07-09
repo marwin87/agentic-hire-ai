@@ -173,6 +173,8 @@ class CVVectorManager:
         to be a CV/resume.
         """
         detector = self.vision_model.with_structured_output(CVDetectionResult)
+        # First-page-equivalent budget: mirrors the token footprint of the
+        # single low-detail page image _detect_if_cv sends for the same check.
         human_msg = HumanMessage(
             content=(
                 "Examine this document text. Is it a CV or resume? Describe "
