@@ -417,6 +417,59 @@ the manual testing was successful before considering the change complete.
 
 ---
 
+## Phase 4: E2E coverage (deferred follow-up)
+
+### Overview
+
+Phase 3's "What We're NOT Doing" explicitly deferred an automated Playwright
+test exercising a real `.docx` upload through the browser to a follow-up
+`/10x-e2e` run. This phase is that follow-up: one browser-level test
+protecting the risk that a real `.docx` file is silently rejected by the
+frontend's client-side MIME gate (or fails to round-trip to the backend),
+using the project's seed + rules levers.
+
+### Changes Required:
+
+#### 1. E2E fixture
+
+**File**: `frontend/tests/e2e/fixtures/sample-cv.docx` (new)
+
+**Intent**: A real, valid `.docx` file with CV-shaped content (>100 chars,
+headings, list bullets) for `setInputFiles`/file-chooser-driven upload.
+
+#### 2. E2E spec
+
+**File**: `frontend/tests/e2e/docx-cv-upload.spec.ts` (new)
+
+**Intent**: Protect the browser-level risk that a `.docx` CV is silently
+rejected client-side or fails to reach the backend, without waiting for
+`ingestion_status: completed` (which requires a real, non-deterministic
+Vision-LLM call already covered by Phase 3's manual verification).
+
+**Contract**: Signup via `POST /api/signup`, set the `access_token` cookie
+directly (mirrors `user-data-isolation.spec.ts`), navigate to
+`/dashboard/cv`, drive the upload through the accessible dropzone button via
+Playwright's `filechooser` event (not the raw `<input>`), and assert both
+`POST /api/cv/upload` returns 202 and the UI shows the "Processing CV" state.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- [ ] `cd frontend && npx playwright test tests/e2e/docx-cv-upload.spec.ts`
+  passes against the running app
+- [ ] Deliberate-break check: reverting `ALLOWED_CV_MIME_TYPES` in
+  `frontend/lib/cv-upload.ts` to PDF-only makes the test fail (no
+  `/api/cv/upload` response ever arrives), confirming the test protects
+  the risk rather than passing vacuously
+- [ ] `cd frontend && npx playwright test` (full suite) still passes
+
+#### Manual Verification:
+
+- [ ] None required — this phase's assertions are fully automated
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests:
@@ -518,3 +571,13 @@ change needed there.
 - [x] 3.6 Orchestrator RAG lookup returns non-empty CV context afterward
 - [x] 3.7 PDF upload through both widgets still works (regression check)
 - [x] 3.8 Non-CV `.docx` upload surfaces a clear `ingestion_error`
+
+### Phase 4: E2E coverage (deferred follow-up)
+
+#### Automated
+
+- [x] 4.1 `cd frontend && npx playwright test tests/e2e/docx-cv-upload.spec.ts`
+  passes against the running app
+- [x] 4.2 Deliberate-break check: reverting `ALLOWED_CV_MIME_TYPES` to
+  PDF-only makes the test fail
+- [x] 4.3 `cd frontend && npx playwright test` (full suite) passes

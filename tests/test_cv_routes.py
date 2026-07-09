@@ -333,3 +333,54 @@ async def test_upload_cv_docx_missing_zip_signature_raises_400() -> None:
             db=AsyncMock(),
         )
     assert exc.value.status_code == 400
+
+
+# ===== Review fix regression tests =====
+# F1: MAX_FILE_SIZE must be checked before any type-specific parsing (PDF
+# magic bytes or DOCX unzip+XML parse), so an oversized upload is rejected
+# on size alone even if its content would otherwise fail docx validation.
+@pytest.mark.asyncio
+async def test_upload_cv_oversized_docx_rejected_on_size_before_parsing() -> None:
+    """Oversized DOCX-typed upload is rejected with the size message, not the
+    'invalid file' message — proving the size gate runs before DocxDocument()
+    ever attempts to parse the (here: garbage, non-docx) content.
+    """
+    oversized_garbage = b"not a valid docx at all" * (10 * 1024 * 1024)
+    with (
+        patch("src.api.routes.cv.DocxDocument") as mock_docx_ctor,
+        pytest.raises(HTTPException) as exc,
+    ):
+        await upload_cv(
+            background_tasks=MagicMock(),
+            file=_upload_file(
+                content_type=DOCX_CONTENT_TYPE, content=oversized_garbage
+            ),
+            user=_user(),
+            db=AsyncMock(),
+        )
+    assert exc.value.status_code == 400
+    assert "large" in exc.value.detail.lower()
+    # The size gate must short-circuit before any DOCX parsing is attempted.
+    mock_docx_ctor.assert_not_called()
+
+
+# F2: the DOCX validation except clause is narrowed to
+# (ValueError, PackageNotFoundError, BadZipFile). An unrelated exception type
+# (simulating an internal bug, e.g. a future python-docx API change) must
+# propagate rather than being silently swallowed as a generic 400.
+@pytest.mark.asyncio
+async def test_upload_cv_docx_unexpected_exception_propagates_not_swallowed() -> None:
+    content = b"PK\x03\x04" + b"payload"
+    with (
+        patch(
+            "src.api.routes.cv.DocxDocument",
+            side_effect=RuntimeError("unexpected internal docx-library bug"),
+        ),
+        pytest.raises(RuntimeError, match="unexpected internal docx-library bug"),
+    ):
+        await upload_cv(
+            background_tasks=MagicMock(),
+            file=_upload_file(content_type=DOCX_CONTENT_TYPE, content=content),
+            user=_user(),
+            db=AsyncMock(),
+        )
