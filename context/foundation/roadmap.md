@@ -3,7 +3,7 @@ project: AgenticHire AI — Production Readiness Refactor
 version: 1
 status: draft
 created: 2026-05-25
-updated: 2026-06-07
+updated: 2026-07-09
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -47,6 +47,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-10  | `scout-scraping-upgrade`   | Scout scrapes SPA job portals correctly via Playwright + JSON-LD extraction | F-01         | FR-004, FR-011 | done      |
 | S-11  | `evaluation-persistence`   | match scores and evaluations persisted to DB after workflow completes | F-02, S-06   | FR-007         | done      |
 | S-12  | `e2e-auth-isolation`       | user data isolation verified at browser level (Risk #2) | F-06, S-01   | FR-001, FR-003 | done      |
+| S-13  | `docx-cv-upload-support`   | upload CV as DOCX (`.docx`) in addition to PDF   | F-04, S-03            | FR-003, FR-009, FR-013 | new   |
 
 ## Streams
 
@@ -57,7 +58,7 @@ Navigation aid — groups items into major feature threads. Each item appears in
 | A      | Job discovery & validation     | F-01 → S-04 → S-05                                     | Scout and validate endpoints; feed results into scoring. |
 | B      | Results dashboard              | F-02 → S-08                                            | User views discovered jobs.                              |
 | C      | User auth & session            | F-03 → S-01 → S-02                                     | User signup, login, token refresh; unlocks all workflows. |
-| D      | CV-based semantic matching     | F-04 → S-03 → S-06 → S-07                              | Upload CV, retrieve context, score jobs, generate summaries. |
+| D      | CV-based semantic matching     | F-04 → S-03 → S-06 → S-07 → S-13                        | Upload CV, retrieve context, score jobs, generate summaries. S-13 extends CV upload to accept DOCX alongside PDF. |
 
 ## Baseline
 
@@ -260,6 +261,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-07       | `tailor-api-endpoint`       | Tailor agent as FastAPI endpoint                   | no                    | Depends on S-06 (shortlisted jobs). Unblock by completing S-06. |
 | S-08       | `user-job-list`             | User job list retrieval endpoint                   | yes                   | Depends on F-02. |
 | F-05       | `docker-compose-hardening`  | Harden Docker Compose with health checks & limits  | no                    | Blocked: Deferred to Phase 2 in speed mode. Not critical for MVP. |
+| S-13       | `docx-cv-upload-support`    | Accept DOCX CVs alongside PDF                       | yes                   | Extends S-03; design finalized in `context/changes/docx-cv-upload-support/change.md` (docx-only via `python-docx` text extraction, no office-rendering engine, `.doc` explicitly out of scope). Ready for `/10x-plan`. |
 
 ## Open Roadmap Questions
 
