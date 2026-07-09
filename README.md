@@ -45,7 +45,7 @@ An AI-powered agent system that autonomously searches, validates, evaluates, and
 | **Database** | PostgreSQL 17 + pgvector |
 | **LLMs / Vision** | OpenRouter (OpenAI, Google, Anthropic models) |
 | **RAG** | pgvector embeddings stored in PostgreSQL |
-| **PDF Processing** | pdf2image + Vision LLM OCR pipeline |
+| **CV Parsing** | pdf2image + Vision LLM OCR (PDF) · python-docx text extraction (DOCX) |
 | **Dependency Management** | uv (Python), npm (Node.js) |
 | **Job Discovery** | [OrioSearch](https://www.oriosearch.org/) |
 | **Web Scraping** | Playwright (headless Chromium, SPA rendering) |
@@ -73,13 +73,18 @@ Instead of fragile PDF text extraction, the system uses a Vision LLM pipeline:
 PDF → Images → Vision LLM → Clean Text → Chunking → Embeddings → PostgreSQL/pgvector
 ```
 
+CVs can also be uploaded as `.docx` (modern Word Open XML). DOCX files skip the
+Vision-OCR step entirely — text and heading structure are extracted directly
+from the document via `python-docx`, then chunked and embedded the same way.
+Legacy `.doc` files are not supported.
+
 ### Tailor Agent
 Generates a concise final evaluation per shortlisted job using orchestrator reasoning and CV context.
 
 ### Next.js Web UI
 Full-featured web interface with:
 - JWT-based authentication (sign up, login, sign out)
-- CV upload with persistence across sessions
+- CV upload (PDF or DOCX) with persistence across sessions
 - Sidebar + real-time agent activity feed layout, with streaming SSE tiles; results restored on navigation
 - A "Criteria locked" recap summarizing the CV, search criteria, and score threshold once a search starts
 - CV upload, search criteria, and score threshold lock while a workflow is running
@@ -211,7 +216,7 @@ agentic-hire-ai/
 ├── docker-compose.dev.yml      # Local development overrides
 ├── docker-compose.prod.yml     # Production overrides
 ├── data/
-│   └── cv/                     # PDF resume storage
+│   └── cv/                     # Resume storage (PDF or DOCX)
 └── pyproject.toml
 ```
 

@@ -47,7 +47,7 @@ AgenticHire AI is migrating from a local Streamlit + ChromaDB demo into a secure
 | S-10  | `scout-scraping-upgrade`   | Scout scrapes SPA job portals correctly via Playwright + JSON-LD extraction | F-01         | FR-004, FR-011 | done      |
 | S-11  | `evaluation-persistence`   | match scores and evaluations persisted to DB after workflow completes | F-02, S-06   | FR-007         | done      |
 | S-12  | `e2e-auth-isolation`       | user data isolation verified at browser level (Risk #2) | F-06, S-01   | FR-001, FR-003 | done      |
-| S-13  | `docx-cv-upload-support`   | upload CV as DOCX (`.docx`) in addition to PDF   | F-04, S-03            | FR-003, FR-009, FR-013 | new   |
+| S-13  | `docx-cv-upload-support`   | upload CV as DOCX (`.docx`) in addition to PDF   | F-04, S-03            | FR-003, FR-009, FR-013 | done  |
 
 ## Streams
 
@@ -244,6 +244,18 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Database query performance for large job lists. Risk: N+1 queries, slow pagination. Mitigation: indexed queries on user_id; limit default page size.
 - **Status:** done
 
+### S-13: User can upload CV as DOCX
+
+- **Outcome:** User uploads a `.docx` CV (modern Word Open XML) via either upload widget. Backend validates MIME + zip structure + a structural `python-docx` open, extracts text/heading structure directly (no office-rendering engine), chunks and embeds it in pgvector alongside the existing PDF path. Legacy `.doc` remains unsupported.
+- **Change ID:** `docx-cv-upload-support`
+- **PRD refs:** FR-003 (CV storage), FR-009 (pgvector embedding), FR-013 (Vision quality — DOCX bypasses Vision-OCR entirely)
+- **Prerequisites:** F-04 (CV ingestion pipeline), S-03 (CV upload endpoint)
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** DOCX text extraction quality depends on the source document's own paragraph styles rather than Vision-OCR heuristics. Risk: malformed/spoofed `.docx` uploads. Mitigation: three-layer validation (MIME + magic-byte/zip check + structural `python-docx` open) before ingestion; explicit `.doc`/office-rendering-engine exclusion keeps the dependency footprint small.
+- **Status:** done
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                   | Suggested issue title                               | Ready for `/10x-plan` | Notes |
@@ -305,3 +317,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Test Phase 2 — Agent logic regression** — Unit + integration tests: validator false negatives, rescout edge errors, RAG retrieval quality drift (Risks #4, #5, #6). Archived 2026-06-05 → `context/archive/2026-06-05-testing-agent-logic-regression/`. See `context/foundation/test-plan.md` §3.
 - **Test Phase 3 — Streaming resilience** — Integration tests: orphan tasks cancel on SSE disconnect, competing writes handled by upsert (Risk #3). Archived 2026-06-05 → `context/archive/2026-06-05-testing-streaming-resilience/`. See `context/foundation/test-plan.md` §3.
 - **Test Phase 4 — Security gate** — Unit tests: no secrets or tracebacks escape into error responses or logs; SecretStr migration (Risk #7). Archived 2026-06-07 → `context/archive/2026-06-05-testing-security-gate/`. See `context/foundation/test-plan.md` §3.
+- **S-13: upload CV as DOCX (`.docx`) in addition to PDF** — Archived 2026-07-09 → `context/archive/2026-07-09-docx-cv-upload-support/`. Lesson: —.
